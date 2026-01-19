@@ -60,13 +60,15 @@ module "eks" {
   subnet_ids               = module.vpc.private_subnets
   control_plane_subnet_ids = module.vpc.private_subnets
 
-  enable_cluster_creator_admin_permissions = true
+  enable_cluster_creator_admin_permissions = false
   endpoint_public_access                   = true
   authentication_mode                      = "API_AND_CONFIG_MAP"
 
+  enable_irsa = false
+
   access_entries = {
     cluster_admin = {
-      principal_arn = data.aws_caller_identity.current.arn
+      principal_arn = var.lab_role_arn
 
       policy_associations = {
         admin = {
@@ -82,7 +84,7 @@ module "eks" {
   eks_managed_node_groups = {
     default = {
       create_iam_role = false
-      iam_role_arn    = data.aws_caller_identity.current.arn
+      iam_role_arn    = var.lab_role_arn
       min_size        = 1
       desired_size    = 1
       instance_types  = ["t3.micro"]
@@ -91,7 +93,7 @@ module "eks" {
 
   # Variáveis para funcionamento no Learning Lab
   aws_iam_session_context_current_arn = data.aws_caller_identity.current.arn
-  iam_role_arn                        = data.aws_caller_identity.current.arn
+  iam_role_arn                        = var.lab_role_arn
   create_iam_role                     = false
   create_node_iam_role                = false
   create_kms_key                      = false
