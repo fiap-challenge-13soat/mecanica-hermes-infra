@@ -76,9 +76,9 @@ Caso ainda não exista, crie o bucket destinado a armazenar o arquivo do terrafo
 aws s3api create-bucket --bucket mechermes-tf-state --region us-east-1
 ```
 
-### Criação do database DynamoDB para o terraform lock
+### Criação da tabela no DynamoDB para o terraform lock
 
-Caso ainda não exista, crie o database destinado a controlar o lock do terraform.
+Caso ainda não exista, crie a tabela destinado a controlar o lock do terraform.
 
 ```bash
 aws dynamodb create-table --table-name mechermes-tf-locks --attribute-definitions AttributeName=LockID,AttributeType=S --key-schema AttributeName=LockID,KeyType=HASH --provisioned-throughput ReadCapacityUnits=5,WriteCapacityUnits=5 --region us-east-1 || echo "Tabela já existe"

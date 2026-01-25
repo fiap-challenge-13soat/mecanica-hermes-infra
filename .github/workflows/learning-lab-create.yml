@@ -38,7 +38,7 @@ jobs:
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: ${{ vars.AWS_DEFAULT_REGION }}
 
-      # Exists or Create S3 bucket for Terraform state files
+      # S3 bucket for Terraform state files if it doesn't exist
       - name: Create Bucket tfstate
         run: |
           if aws s3api head-bucket --bucket mechermes-tf-state 2>/dev/null; then
@@ -49,7 +49,7 @@ jobs:
             sleep 60
           fi
 
-      # Exists or Create DynamoDB table for Terraform state locking
+      # Create DynamoDB table for Terraform state locking if it doesn't exist
       - name: Create DynamoDB Table for tf-locks
         run: |
           if aws dynamodb describe-table --table-name mechermes-tf-locks 2>/dev/null; then
