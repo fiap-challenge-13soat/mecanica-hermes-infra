@@ -18,9 +18,13 @@ Edite o arquivo `variables.tf` com os seus dados de acesso.
 | lab_role_arn  | Troque o conjunto numérico do arn pelo seu código de usuário.                   |
 | user_role_arn | Troque o conjunto numérico do arn pelo seu código de usuário.                   |
 
+---
+
 ### Backend
 
 Edite o arquivo `backend.tf` alterando o nome do bucket de destino para o mesmo bucket criado durante a configuração dos requisitos.
+
+---
 
 ## Execução Local
 
@@ -36,9 +40,13 @@ terraform init
 terraform apply
 ```
 
+---
+
 ### Observações
 
 > O processo de deploy pode demorar de 15 a 25 minutos.
+
+---
 
 ### Correção de Problemas
 

@@ -1,12 +1,12 @@
 # Mecânica Hermes - Infra Kubernetes
 
-Este projeto é responsável por criar o ambiente Kubernetes para realizar o deploy do projeto.
+Este repositório é responsável por criar o ambiente Kubernetes para realizar o deploy do projeto.
 
 ---
 
 ## Arquitetura dos Projetos de Infra
 
-Nossa infraestrutura para disponibilizar um ambiente completo e funcional é composta por três passos sequenciais que são executados em diferentes projetos:
+Nossa infraestrutura para disponibilizar um ambiente completo e funcional é composta por três passos sequenciais que são executados em diferentes repositórios:
 
 1. Mecânica Hermes - Infra Kubernetes (Este projeto)
 2. Mecânica Hermes - Infra Database
