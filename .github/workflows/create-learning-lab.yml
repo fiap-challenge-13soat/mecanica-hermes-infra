@@ -10,6 +10,7 @@ jobs:
   terraform:
     name: "Terraform"
     runs-on: ubuntu-latest
+    environment: aws
 
     # Use the Bash shell regardless whether the GitHub Actions runner is ubuntu-latest, macos-latest, or windows-latest
     defaults:
@@ -43,7 +44,7 @@ jobs:
           if aws s3api head-bucket --bucket mechermes-tf-state 2>/dev/null; then
             echo "Bucket already exists"
           else
-            aws s3api create-bucket --bucket mechermes-tf-state --region us-east-1
+            aws s3api create-bucket --bucket mechermes-tf-state --region "${{ vars.AWS_DEFAULT_REGION }}
             echo "Bucket created, waiting 60 seconds before continuing..."
             sleep 60
           fi
