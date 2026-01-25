@@ -1,6 +1,6 @@
 # Mecânica Hermes - Infra Kubernetes
 
-Este repositório é responsável por criar o ambiente Kubernetes para realizar o deploy do projeto.
+Este repositório é responsável por criar o cluster para realizar o deploy do projeto.
 
 ---
 
@@ -9,8 +9,8 @@ Este repositório é responsável por criar o ambiente Kubernetes para realizar 
 Nossa infraestrutura para disponibilizar um ambiente completo e funcional é composta por três passos sequenciais que são executados em diferentes repositórios:
 
 1. Mecânica Hermes - Infra Kubernetes (Este projeto)
-2. Mecânica Hermes - Infra Database
-3. Mecânica Hermes - Deploy Kubernetes
+2. [Mecânica Hermes - Infra Database](https://github.com/fiap-challenge-13soat/mecanica-hermes-db)
+3. [Mecânica Hermes - Deploy Kubernetes](https://github.com/fiap-challenge-13soat/mecanica-hermes-k8s)
 
 ## Execução pela Pipeline
 
@@ -32,8 +32,8 @@ Nossa infraestrutura para disponibilizar um ambiente completo e funcional é com
 ---
 Dispare a Action Trigger manual de acordo com o seu ambiente:
 
-- **Learning Lab:** `Terraform Create - Learning Lab`.
-- **AWS com Usuário Admin:** `Terraform Create - AWS Admin`.
+- **Learning Lab:** `Learning Lab - Terraform Create`.
+- **AWS com Usuário Admin:** `AWS Admin - Terraform Create`.
 
 ---
 
@@ -42,8 +42,8 @@ Dispare a Action Trigger manual de acordo com o seu ambiente:
 ---
 Dispare a Action Trigger manual de acordo com o seu ambiente:
 
-- **Learning Lab:** `Terraform Destroy - Learning Lab`.
-- **AWS com Usuário Admin:** `Terraform Destroy - AWS Admin`.
+- **Learning Lab:** `Learning Lab - Terraform Destroy`.
+- **AWS com Usuário Admin:** `AWS Admin - Terraform Destroy`.
 
 ---
 
@@ -76,6 +76,14 @@ Caso ainda não exista, crie o bucket destinado a armazenar o arquivo do terrafo
 aws s3api create-bucket --bucket mechermes-tf-state --region us-east-1
 ```
 
+### Criação da tabela no DynamoDB para o terraform lock
+
+Caso ainda não exista, crie a tabela destinado a controlar o lock do terraform.
+
+```bash
+aws dynamodb create-table --table-name mechermes-tf-locks --attribute-definitions AttributeName=LockID,AttributeType=S --key-schema AttributeName=LockID,KeyType=HASH --provisioned-throughput ReadCapacityUnits=5,WriteCapacityUnits=5 --region us-east-1 || echo "Tabela já existe"
+```
+
 ## Deploy do Terraform no AWS Learning Lab
 
 Confira o [README.md](./learning-lab/README.md) com maiores detalhes para este deploy.
@@ -83,21 +91,3 @@ Confira o [README.md](./learning-lab/README.md) com maiores detalhes para este d
 ## Deploy do Terraform no AWS com usuário admin
 
 Confira o [README.md](./aws/README.md) com maiores detalhes para este deploy.
-
-## Kubectl para todas as pastas
-
-```bash
-aws eks update-kubeconfig --name mechermes-eks
-```
-
-```bash
-kubectl apply -f .\namespace.yaml
-```
-
-```bash
-kubectl apply -R -f .
-```
-
-```bash
-kubectl get svc -n mecanica-hermes
-```

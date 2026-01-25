@@ -22,7 +22,7 @@ Edite o arquivo `variables.tf` com os seus dados de acesso.
 
 ### Backend
 
-Edite o arquivo `backend.tf` alterando o nome do bucket de destino para o mesmo bucket criado durante a configuração dos requisitos.
+Edite o arquivo `backend.tf` alterando o nome do bucket de destino e da tabela DynamoDB de destino para os mesmos valores criados durante a configuração dos requisitos.
 
 ---
 
@@ -44,10 +44,10 @@ terraform apply
 
 ### Observações
 
-> O processo de deploy pode demorar de 15 a 25 minutos.
+> O processo de criação pode demorar de 15 a 25 minutos.
 
 ---
 
 ### Correção de Problemas
 
-> Este deploy foi amplamente testado, mas caso ocorra algum erro durante a sua execução, sugerimos abrir o ambiente no VSCode e solicitar ajuda ao Co-Pilot.
+> Este processo foi amplamente testado, mas caso ocorra algum erro durante a sua execução, sugerimos abrir o ambiente no VSCode e solicitar ajuda ao Copilot.
