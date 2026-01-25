@@ -1,4 +1,4 @@
-name: Terraform Create - Learning Lab AWS
+name: Learning Lab AWS - Terraform Destroy
 
 on:
   workflow_dispatch:
