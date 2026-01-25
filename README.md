@@ -30,7 +30,7 @@ Nossa infraestrutura para disponibilizar um ambiente completo e funcional é com
 ### Create Environment
 
 ---
-Dispare a Action Trigguer manual de acordo com o seu ambiente:
+Dispare a Action Trigger manual de acordo com o seu ambiente:
 
 - **Learning Lab:** `Terraform Create - Learning Lab`.
 - **AWS com Usuário Admin:** `Terraform Create - AWS Admin`.
@@ -40,7 +40,7 @@ Dispare a Action Trigguer manual de acordo com o seu ambiente:
 ### Destroy Environment
 
 ---
-Dispare a Action Trigguer manual de acordo com o seu ambiente:
+Dispare a Action Trigger manual de acordo com o seu ambiente:
 
 - **Learning Lab:** `Terraform Destroy - Learning Lab`.
 - **AWS com Usuário Admin:** `Terraform Destroy - AWS Admin`.

@@ -4,7 +4,7 @@ Este módulo realiza o deploy do ambiente necessário para uso da Mecânica Herm
 
 ## Requisitos
 
-Configure os requisitos conferme descrito no [`README.md`](../README.md) da raiz do projeto.
+Configure os requisitos conforme descrito no [`README.md`](../README.md) da raiz do projeto.
 
 ## Configurações
 
