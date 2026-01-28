@@ -84,10 +84,10 @@ Caso ainda não exista, crie a tabela destinado a controlar o lock do terraform.
 aws dynamodb create-table --table-name mechermes-tf-locks --attribute-definitions AttributeName=LockID,AttributeType=S --key-schema AttributeName=LockID,KeyType=HASH --provisioned-throughput ReadCapacityUnits=5,WriteCapacityUnits=5 --region us-east-1 || echo "Tabela já existe"
 ```
 
-## Deploy do Terraform no AWS Learning Lab
+### Deploy do Terraform no AWS Learning Lab
 
 Confira o [README.md](./learning-lab/README.md) com maiores detalhes para este deploy.
 
-## Deploy do Terraform no AWS com usuário admin
+### Deploy do Terraform no AWS com usuário admin
 
 Confira o [README.md](./aws/README.md) com maiores detalhes para este deploy.
