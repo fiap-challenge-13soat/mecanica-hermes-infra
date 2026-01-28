@@ -85,14 +85,6 @@ module "eks" {
       type                     = "ingress"
       source_security_group_id = aws_security_group.mainsg.id
     }
-    elb_nodeport_http = {
-      description              = "Allow ELB to reach NodePort 30080"
-      protocol                 = "tcp"
-      from_port                = 30080
-      to_port                  = 30080
-      type                     = "ingress"
-      source_security_group_id = aws_security_group.mainsg.id
-    }
   }
 
   # Variáveis para funcionamento no Learning Lab
