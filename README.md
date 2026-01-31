@@ -12,6 +12,50 @@ Nossa infraestrutura para disponibilizar um ambiente completo e funcional é com
 2. [Mecânica Hermes - Infra Database](https://github.com/fiap-challenge-13soat/mecanica-hermes-db)
 3. [Mecânica Hermes - Deploy Kubernetes](https://github.com/fiap-challenge-13soat/mecanica-hermes-k8s)
 
+---
+
+```mermaid
+flowchart
+  subgraph Step1["Repo: Infra Kubernetes (este projeto)"]
+   TF["Terraform"]
+   VPC["VPC: mechermes-vpc"]
+   SG["Security Group: mechermes-sg"]
+   Subnet["Subnets privadas/públicas"]
+   EKS["EKS Cluster (privado)"]
+   Nodes["Node Groups"]
+  end
+
+  subgraph Step2["Repo: Infra Database"]
+   Data["Data sources: VPC/SG/Subnets"]
+   RDS["RDS PostgreSQL (privado)"]
+  end
+
+  subgraph Step3["Conta Externa: Terraform State & Lock"]
+   S3["S3: tfstate"]
+   DDB["DynamoDB: tf locks"]
+  end
+
+  subgraph Step4["Repo: Deploy Kubernetes"]
+   Apps["Apps publicados no Kubernetes"]
+  end
+
+  TF --> VPC
+  TF --> SG
+  TF --> Subnet
+  TF --> EKS
+  TF --> Nodes
+  TF --> S3
+  TF --> DDB
+
+  VPC --> Data
+  SG --> Data
+  Subnet --> Data
+  Data --> RDS
+
+  EKS --> Apps
+  RDS --> Apps
+```
+
 ## Execução pela Pipeline
 
 **Configure as Secrets abaixo no repositório.**
@@ -26,6 +70,12 @@ Nossa infraestrutura para disponibilizar um ambiente completo e funcional é com
 | AWS_DEFAULT_REGION    |
 
 ---
+
+Para gerar nova Key e Token use o comando:
+
+```bash
+aws sts get-session-token
+```
 
 ### Create Environment
 
@@ -73,7 +123,7 @@ aws configure
 Caso ainda não exista, crie o bucket destinado a armazenar o arquivo do terraform state.
 
 ```bash
-aws s3api create-bucket --bucket mechermes-tf-state --region us-east-1
+aws s3api create-bucket --bucket mechermes-tf-state-aws --region us-east-1
 ```
 
 ---

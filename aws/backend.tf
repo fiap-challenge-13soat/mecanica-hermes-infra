@@ -1,9 +1,9 @@
 terraform {
   backend "s3" {
-    bucket         = "mechermes-tf-state"
+    bucket         = "mechermes-tf-state-aws"
     key            = "infra/aws.tfstate"
     region         = "us-east-1"
     encrypt        = true
-    dynamodb_table = "mechermes-tf-locks"
+    dynamodb_table = "arn:aws:dynamodb:us-east-1:920117427782:table/mechermes-tf-locks"
   }
 }
