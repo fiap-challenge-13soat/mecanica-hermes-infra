@@ -41,10 +41,10 @@ jobs:
       # S3 bucket for Terraform state files if it doesn't exist
       - name: Create Bucket tfstate
         run: |
-          if aws s3api head-bucket --bucket mechermes-tf-state 2>/dev/null; then
+          if aws s3api head-bucket --bucket mechermes-tf-state-aws 2>/dev/null; then
             echo "Bucket already exists"
           else
-            aws s3api create-bucket --bucket mechermes-tf-state --region ${{ vars.AWS_DEFAULT_REGION }}
+            aws s3api create-bucket --bucket mechermes-tf-state-aws --region ${{ vars.AWS_DEFAULT_REGION }}
             echo "Bucket created, waiting 60 seconds before continuing..."
             sleep 60
           fi
@@ -52,10 +52,10 @@ jobs:
       # Create DynamoDB table for Terraform state locking if it doesn't exist
       - name: Create DynamoDB Table for tf-locks
         run: |
-          if aws dynamodb describe-table --table-name mechermes-tf-locks 2>/dev/null; then
+          if aws dynamodb describe-table --table-name arn:aws:dynamodb:us-east-1:920117427782:table/mechermes-tf-locks 2>/dev/null; then
             echo "DynamoDB table already exists"
           else
-            aws dynamodb create-table --table-name mechermes-tf-locks --attribute-definitions AttributeName=LockID,AttributeType=S --key-schema AttributeName=LockID,KeyType=HASH --provisioned-throughput ReadCapacityUnits=5,WriteCapacityUnits=5 --region ${{ vars.AWS_DEFAULT_REGION }}
+            aws dynamodb create-table --table-name arn:aws:dynamodb:us-east-1:920117427782:table/mechermes-tf-locks --attribute-definitions AttributeName=LockID,AttributeType=S --key-schema AttributeName=LockID,KeyType=HASH --provisioned-throughput ReadCapacityUnits=5,WriteCapacityUnits=5 --region ${{ vars.AWS_DEFAULT_REGION }}
             echo "DynamoDB table created, waiting 20 seconds before continuing..."
             sleep 20
           fi

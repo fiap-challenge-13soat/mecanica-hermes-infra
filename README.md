@@ -4,6 +4,28 @@ Este repositório é responsável por criar o cluster para realizar o deploy do 
 
 ---
 
+## Tecnologias Utilizadas
+
+---
+
+![Terraform](https://img.shields.io/badge/Terraform-7B42BC?logo=terraform&logoColor=white)
+![AWS](https://img.shields.io/badge/AWS-Cloud-232F3E?logo=amazonaws&logoColor=white)
+![Amazon VPC](https://img.shields.io/badge/Amazon%20VPC-232F3E?logo=amazonaws&logoColor=white)
+![EKS](https://img.shields.io/badge/EKS-Kubernetes-FF9900?logo=amazon-eks&logoColor=white)
+![Amazon S3](https://img.shields.io/badge/Amazon%20S3-569A31?logo=amazons3&logoColor=white)
+![Amazon DynamoDB](https://img.shields.io/badge/Amazon%20DynamoDB-4053D6?logo=amazondynamodb&logoColor=white)
+![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-CI/CD-2088FF?logo=githubactions&logoColor=white)
+
+- **Terraform** para provisionamento de infraestrutura como código (IaC)
+- **AWS** como provedor de nuvem
+- **VPC, Subnets e Security Groups** para rede e segurança
+- **Amazon EKS** para o cluster Kubernetes
+- **S3** para armazenamento do estado do Terraform
+- **DynamoDB** para lock de estado do Terraform
+- **GitHub Actions** para execução da pipeline.
+
+---
+
 ## Arquitetura dos Projetos de Infra
 
 Nossa infraestrutura para disponibilizar um ambiente completo e funcional é composta por três passos sequenciais que são executados em diferentes repositórios:
@@ -11,6 +33,50 @@ Nossa infraestrutura para disponibilizar um ambiente completo e funcional é com
 1. Mecânica Hermes - Infra Kubernetes (Este projeto)
 2. [Mecânica Hermes - Infra Database](https://github.com/fiap-challenge-13soat/mecanica-hermes-db)
 3. [Mecânica Hermes - Deploy Kubernetes](https://github.com/fiap-challenge-13soat/mecanica-hermes-k8s)
+
+---
+
+```mermaid
+flowchart
+  subgraph Step1["Repo: Infra Kubernetes (este projeto)"]
+   TF["Terraform"]
+   VPC["VPC: mechermes-vpc"]
+   SG["Security Group: mechermes-sg"]
+   Subnet["Subnets privadas/públicas"]
+   EKS["EKS Cluster (privado)"]
+   Nodes["Node Groups"]
+  end
+
+  subgraph Step2["Repo: Infra Database"]
+   Data["Data sources: VPC/SG/Subnets"]
+   RDS["RDS PostgreSQL (privado)"]
+  end
+
+  subgraph Step3["Conta Externa: Terraform State & Lock"]
+   S3["S3: tfstate"]
+   DDB["DynamoDB: tf locks"]
+  end
+
+  subgraph Step4["Repo: Deploy Kubernetes"]
+   Apps["Apps publicados no Kubernetes"]
+  end
+
+  TF --> VPC
+  TF --> SG
+  TF --> Subnet
+  TF --> EKS
+  TF --> Nodes
+  TF --> S3
+  TF --> DDB
+
+  VPC --> Data
+  SG --> Data
+  Subnet --> Data
+  Data --> RDS
+
+  EKS --> Apps
+  RDS --> Apps
+```
 
 ## Execução pela Pipeline
 
@@ -26,6 +92,12 @@ Nossa infraestrutura para disponibilizar um ambiente completo e funcional é com
 | AWS_DEFAULT_REGION    |
 
 ---
+
+Para gerar nova Key e Token use o comando:
+
+```bash
+aws sts get-session-token
+```
 
 ### Create Environment
 
@@ -73,7 +145,7 @@ aws configure
 Caso ainda não exista, crie o bucket destinado a armazenar o arquivo do terraform state.
 
 ```bash
-aws s3api create-bucket --bucket mechermes-tf-state --region us-east-1
+aws s3api create-bucket --bucket mechermes-tf-state-aws --region us-east-1
 ```
 
 ---
