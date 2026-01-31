@@ -4,6 +4,28 @@ Este repositório é responsável por criar o cluster para realizar o deploy do 
 
 ---
 
+## Tecnologias Utilizadas
+
+---
+
+![Terraform](https://img.shields.io/badge/Terraform-7B42BC?logo=terraform&logoColor=white)
+![AWS](https://img.shields.io/badge/AWS-Cloud-232F3E?logo=amazonaws&logoColor=white)
+![Amazon VPC](https://img.shields.io/badge/Amazon%20VPC-232F3E?logo=amazonaws&logoColor=white)
+![EKS](https://img.shields.io/badge/EKS-Kubernetes-FF9900?logo=amazon-eks&logoColor=white)
+![Amazon S3](https://img.shields.io/badge/Amazon%20S3-569A31?logo=amazons3&logoColor=white)
+![Amazon DynamoDB](https://img.shields.io/badge/Amazon%20DynamoDB-4053D6?logo=amazondynamodb&logoColor=white)
+![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-CI/CD-2088FF?logo=githubactions&logoColor=white)
+
+- **Terraform** para provisionamento de infraestrutura como código (IaC)
+- **AWS** como provedor de nuvem
+- **VPC, Subnets e Security Groups** para rede e segurança
+- **Amazon EKS** para o cluster Kubernetes
+- **S3** para armazenamento do estado do Terraform
+- **DynamoDB** para lock de estado do Terraform
+- **GitHub Actions** para execução da pipeline.
+
+---
+
 ## Arquitetura dos Projetos de Infra
 
 Nossa infraestrutura para disponibilizar um ambiente completo e funcional é composta por três passos sequenciais que são executados em diferentes repositórios:
