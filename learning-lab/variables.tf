@@ -4,14 +4,12 @@ variable "project_name" {
   default     = "mechermes"
 }
 
-variable "lab_role_arn" {
-  description = "ARN da role permitida pelo AWS Learning Lab (usada pelo EKS)."
+variable "aws_account_id" {
+  description = "ID da conta AWS (usado para construir ARNs de roles)."
   type        = string
-  default     = "arn:aws:iam::548801166108:role/LabRole"
 }
 
-variable "user_role_arn" {
-  description = "ARN da role usada para login na AWS."
-  type        = string
-  default     = "arn:aws:iam::548801166108:role/voclabs"
+locals {
+  lab_role_arn  = "arn:aws:iam::${var.aws_account_id}:role/LabRole"
+  user_role_arn = "arn:aws:iam::${var.aws_account_id}:role/voclabs"
 }

@@ -27,7 +27,7 @@ module "eks" {
 
   access_entries = {
     cluster_admin = {
-      principal_arn = var.lab_role_arn
+      principal_arn = local.lab_role_arn
 
       policy_associations = {
         admin = {
@@ -39,7 +39,7 @@ module "eks" {
       }
     },
     user_admin = {
-      principal_arn = var.user_role_arn
+      principal_arn = local.user_role_arn
 
       policy_associations = {
         admin = {
@@ -55,7 +55,7 @@ module "eks" {
   eks_managed_node_groups = {
     default = {
       create_iam_role = false
-      iam_role_arn    = var.lab_role_arn
+      iam_role_arn    = local.lab_role_arn
       min_size        = 2
       desired_size    = 2
       max_size        = 4
@@ -89,7 +89,7 @@ module "eks" {
 
   # Variáveis para funcionamento no Learning Lab
   aws_iam_session_context_current_arn = data.aws_caller_identity.current.arn
-  iam_role_arn                        = var.lab_role_arn
+  iam_role_arn                        = local.lab_role_arn
   create_iam_role                     = false
   create_node_iam_role                = false
   create_kms_key                      = false
