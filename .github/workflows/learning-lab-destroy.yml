@@ -45,7 +45,11 @@ jobs:
       # Generates an execution plan for Terraform
       - name: Terraform Plan
         run: terraform plan -destroy -input=false
+        env:
+          TF_VAR_aws_account_id: ${{ secrets.AWS_ACCOUNT_ID }}
 
       # Destroy infrastructure according to Terraform configuration files
       - name: Terraform Destroy
         run: terraform apply -destroy -auto-approve -input=false
+        env:
+          TF_VAR_aws_account_id: ${{ secrets.AWS_ACCOUNT_ID }}

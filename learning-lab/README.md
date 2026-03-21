@@ -10,13 +10,23 @@ Configure os requisitos conforme descrito no [`README.md`](../README.md) da raiz
 
 ### Variáveis
 
-Edite o arquivo `variables.tf` com os seus dados de acesso.
-
 | Variável      | Descrição                                                                       |
 | ------------- | ------------------------------------------------------------------------------- |
 | project_name  | Nome do projeto, será utilizado como base para nomear todos os demais recursos. |
-| lab_role_arn  | Troque o conjunto numérico do arn pelo seu código de usuário.                   |
-| user_role_arn | Troque o conjunto numérico do arn pelo seu código de usuário.                   |
+
+### Secrets (GitHub Actions)
+
+O `aws_account_id` é injetado automaticamente via GitHub Secret `AWS_ACCOUNT_ID` e utilizado para construir os ARNs das roles `LabRole` e `voclabs`.
+
+| Secret         | Descrição                                                              |
+| -------------- | ---------------------------------------------------------------------- |
+| AWS_ACCOUNT_ID | ID numérico da conta AWS. Usado para montar os ARNs das roles do EKS. |
+
+#### Para execução local, exporte a variável antes de rodar o Terraform:
+
+```bash
+export TF_VAR_aws_account_id="SEU_ACCOUNT_ID"
+```
 
 ---
 

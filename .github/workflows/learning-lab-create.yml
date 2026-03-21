@@ -71,7 +71,11 @@ jobs:
       # Generates an execution plan for Terraform
       - name: Terraform Plan
         run: terraform plan -input=false
+        env:
+          TF_VAR_aws_account_id: ${{ secrets.AWS_ACCOUNT_ID }}
 
       # Build or change infrastructure according to Terraform configuration files
       - name: Terraform Apply
         run: terraform apply -auto-approve -input=false
+        env:
+          TF_VAR_aws_account_id: ${{ secrets.AWS_ACCOUNT_ID }}

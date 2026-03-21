@@ -84,12 +84,13 @@ flowchart
 
 ---
 
-| Variável              |
-| --------------------- |
-| AWS_ACCESS_KEY_ID     |
-| AWS_SECRET_ACCESS_KEY |
-| AWS_SESSION_TOKEN     |
-| AWS_DEFAULT_REGION    |
+| Variável              | Descrição                                                              |
+| --------------------- | ---------------------------------------------------------------------- |
+| AWS_ACCESS_KEY_ID     | Chave de acesso da AWS.                                                |
+| AWS_SECRET_ACCESS_KEY | Chave secreta da AWS.                                                  |
+| AWS_SESSION_TOKEN     | Token de sessão da AWS.                                                |
+| AWS_DEFAULT_REGION    | Região padrão da AWS (configurada como variável de ambiente).          |
+| AWS_ACCOUNT_ID        | ID numérico da conta AWS, usado para montar os ARNs das roles do EKS.  |
 
 ---
 
