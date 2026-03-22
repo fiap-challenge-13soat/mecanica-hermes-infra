@@ -46,15 +46,15 @@ module "eks" {
     }
   }
 
-  # Allow control plane to reach kubelet (logs/port-forward)
+  # Allow nodes to reach kubelet (required for monitoring agents with hostNetwork=true)
   node_security_group_additional_rules = {
-    kubelet_logs_primary = {
-      description              = "Allow primary cluster SG to reach kubelet"
-      protocol                 = "tcp"
-      from_port                = 10250
-      to_port                  = 10250
-      type                     = "ingress"
-      source_security_group_id = aws_security_group.mainsg.id
+    kubelet_self = {
+      description = "Allow nodes to reach kubelet on same/other nodes (e.g. newrelic-infrastructure)"
+      protocol    = "tcp"
+      from_port   = 10250
+      to_port     = 10250
+      type        = "ingress"
+      self        = true
     }
   }
 }
