@@ -35,57 +35,61 @@ jobs:
           aws-region: ${{ vars.AWS_DEFAULT_REGION }}
 
       - name: Discover Infrastructure Values
-        id: discover
         run: |
           echo "Discovering VPC ID..."
           VPC_ID=$(aws ec2 describe-vpcs \
             --filters "Name=tag:Name,Values=mechermes-vpc" \
             --query "Vpcs[0].VpcId" \
             --output text)
-          echo "VPC_ID=$VPC_ID" >> $GITHUB_OUTPUT
+          echo "✓ VPC ID: $VPC_ID"
 
           echo "Discovering Private Subnets..."
-          PRIVATE_SUBNETS=$(aws ec2 describe-subnets \
+          PRIVATE_SUBNETS_JSON=$(aws ec2 describe-subnets \
             --filters "Name=tag:Name,Values=mechermes-vpc-private-*" \
             --query "Subnets[*].SubnetId" \
-            --output json | jq -r 'join(",")')
-          echo "PRIVATE_SUBNETS=$PRIVATE_SUBNETS" >> $GITHUB_OUTPUT
+            --output json)
+          echo "✓ Private Subnets: $PRIVATE_SUBNETS_JSON"
 
           echo "Discovering API Backend Security Group..."
           API_BACKEND_SG=$(aws ec2 describe-security-groups \
             --filters "Name=tag:Name,Values=mechermes-sg" \
             --query "SecurityGroups[0].GroupId" \
             --output text)
-          echo "API_BACKEND_SG=$API_BACKEND_SG" >> $GITHUB_OUTPUT
+          echo "✓ API Backend SG: $API_BACKEND_SG"
 
           echo "Discovering Cognito User Pool ARN..."
           COGNITO_ARN=$(aws cognito-idp list-user-pools --max-results 60 \
             --query "UserPools[?Name=='mechermes-hml-userpool'].Arn | [0]" \
             --output text)
-          echo "COGNITO_ARN=$COGNITO_ARN" >> $GITHUB_OUTPUT
+          echo "✓ Cognito ARN: $COGNITO_ARN"
 
           echo "Discovering Lambda Function ARN..."
           LAMBDA_ARN=$(aws lambda get-function \
             --function-name mechermes-hml-cognito-token-lambda \
             --query "Configuration.FunctionArn" \
             --output text)
-          echo "LAMBDA_ARN=$LAMBDA_ARN" >> $GITHUB_OUTPUT
+          echo "✓ Lambda ARN: $LAMBDA_ARN"
+
+          echo "Generating terraform.tfvars..."
+          cat > terraform.tfvars <<EOF
+          project_name         = "mechermes"
+          environment           = "hml"
+          cognito_user_pool_arn = "${COGNITO_ARN}"
+          lambda_function_arn   = "${LAMBDA_ARN}"
+          lambda_function_name  = "mechermes-hml-cognito-token-lambda"
+          vpc_id                = "${VPC_ID}"
+          private_subnets       = ${PRIVATE_SUBNETS_JSON}
+          api_backend_sg_id     = "${API_BACKEND_SG}"
+          nlb_target_port       = 80
+          EOF
+          echo "✓ terraform.tfvars generated"
+          cat terraform.tfvars
 
       - name: Terraform Init
         run: terraform init -backend-config=backend-hml.hcl
 
       - name: Terraform Destroy
-        run: |
-          terraform destroy -auto-approve \
-            -var="project_name=mechermes" \
-            -var="environment=hml" \
-            -var="cognito_user_pool_arn=${{ steps.discover.outputs.COGNITO_ARN }}" \
-            -var="lambda_function_arn=${{ steps.discover.outputs.LAMBDA_ARN }}" \
-            -var="lambda_function_name=mechermes-hml-cognito-token-lambda" \
-            -var="vpc_id=${{ steps.discover.outputs.VPC_ID }}" \
-            -var='private_subnets=[${{ steps.discover.outputs.PRIVATE_SUBNETS }}]' \
-            -var="api_backend_sg_id=${{ steps.discover.outputs.API_BACKEND_SG }}" \
-            -var="nlb_target_port=80"
+        run: terraform destroy -auto-approve
 
       - name: Summary
         run: |
