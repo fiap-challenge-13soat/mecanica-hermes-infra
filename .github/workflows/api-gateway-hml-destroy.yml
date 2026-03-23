@@ -10,7 +10,7 @@ jobs:
   terraform:
     name: "Terraform Destroy - API Gateway HML"
     runs-on: ubuntu-latest
-    environment: api-gateway-hml
+    environment: aws
 
     defaults:
       run:
