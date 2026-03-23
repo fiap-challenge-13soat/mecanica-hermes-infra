@@ -36,5 +36,5 @@ variable "resource_server_identifier" {
 variable "resource_server_name" {
   description = "Nome do Resource Server."
   type        = string
-  default     = "Mecânica Hermes API"
+  default     = "Mecanica Hermes API"
 }
