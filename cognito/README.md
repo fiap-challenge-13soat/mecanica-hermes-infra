@@ -169,23 +169,24 @@ aws cognito-idp describe-user-pool-domain --domain <DOMAIN_PREFIX>
 
 ### 2. Criar Arquivo de Variáveis
 
-Copie o arquivo de exemplo e preencha com os valores do seu ambiente:
+Os arquivos de variáveis já estão configurados com valores padrão. Você só precisa especificar o ambiente:
 
-```bash
-# Para HML
-cp hml.tfvars.example hml.tfvars
-
-# Para PRD
-cp prd.tfvars.example prd.tfvars
-```
-
-Edite o arquivo `hml.tfvars` ou `prd.tfvars` substituindo os placeholders:
+**`hml.tfvars`**:
 
 ```hcl
-environment           = "hml"  # ou "prd"
-cognito_domain_prefix = "mechermes-hml"  # Use o valor real
-user_pool_name        = "mechermes-hml-userpool"  # Use o valor real
+environment = "hml"
 ```
+
+**`prd.tfvars`**:
+
+```hcl
+environment = "prd"
+```
+
+Todos os outros valores são gerados automaticamente usando o padrão `${project_name}-${environment}`:
+
+- `cognito_domain_prefix` → `mechermes-hml` ou `mechermes-prd`
+- `user_pool_name` → `mechermes-hml-userpool` ou `mechermes-prd-userpool`
 
 ---
 
@@ -347,46 +348,22 @@ Este módulo pode ser implantado automaticamente através de GitHub Actions work
 
 ### Workflows Disponíveis
 
-O projeto possui 4 workflows configurados:
+O projeto possui 2 workflows unificados:
 
-- **Cognito HML - Terraform Create**: Cria/atualiza infraestrutura Cognito no ambiente HML
-- **Cognito PRD - Terraform Create**: Cria/atualiza infraestrutura Cognito no ambiente PRD
-- **Cognito HML - Terraform Destroy**: Destrói infraestrutura Cognito no ambiente HML
-- **Cognito PRD - Terraform Destroy**: Destrói infraestrutura Cognito no ambiente PRD
+- **Cognito - Terraform Create**: Cria/atualiza infraestrutura Cognito (selecione HML ou PRD)
+- **Cognito - Terraform Destroy**: Destrói infraestrutura Cognito (selecione HML ou PRD)
 
 ### Configuração de Secrets e Variáveis
 
 Configure os seguintes secrets/variáveis no GitHub:
 
-#### Secrets Comuns (ambos ambientes)
+#### Secrets (environment `aws`)
 
 | Secret | Descrição |
 | ------ | --------- |
 | `AWS_ACCESS_KEY_ID` | AWS Access Key ID |
 | `AWS_SECRET_ACCESS_KEY` | AWS Secret Access Key |
 | `AWS_SESSION_TOKEN` | AWS Session Token (se aplicável) |
-
-#### Secrets Específicos do HML
-
-Configure no environment `cognito-hml`:
-
-| Secret | Descrição | Exemplo |
-| ------ | --------- | ------- |
-| `HML_USER_POOL_ID` | ID do User Pool HML | `us-east-1_ABC123DEF` |
-| `HML_RESOURCE_SERVER_IDENTIFIER` | Identificador do Resource Server | `mechermes` |
-| `HML_CLIENT_ID` | ID do App Client | `1a2b3c4d5e6f7g8h9i0j` |
-| `HML_DOMAIN_PREFIX` | Prefixo do domínio Cognito | `mechermes-hml` |
-
-#### Secrets Específicos do PRD
-
-Configure no environment `cognito-prd`:
-
-| Secret | Descrição | Exemplo |
-| ------ | --------- | ------- |
-| `PRD_USER_POOL_ID` | ID do User Pool PRD | `us-east-1_XYZ789ABC` |
-| `PRD_RESOURCE_SERVER_IDENTIFIER` | Identificador do Resource Server | `mechermes` |
-| `PRD_CLIENT_ID` | ID do App Client | `9i8h7g6f5e4d3c2b1a0` |
-| `PRD_DOMAIN_PREFIX` | Prefixo do domínio Cognito | `mechermes-prd` |
 
 #### Variáveis
 
@@ -396,27 +373,22 @@ Configure no environment `cognito-prd`:
 
 ### Arquivos de Variáveis
 
-Certifique-se de criar os arquivos de variáveis antes de executar os workflows:
+Os arquivos `hml.tfvars` e `prd.tfvars` já estão configurados no repositório com valores simplificados:
 
-```bash
-# Criar hml.tfvars no repositório
-cp hml.tfvars.example hml.tfvars
-# Editar com valores reais e fazer commit
-
-# Criar prd.tfvars no repositório
-cp prd.tfvars.example prd.tfvars
-# Editar com valores reais e fazer commit
+```hcl
+environment = "hml"  # ou "prd"
 ```
 
-**IMPORTANTE**: Os arquivos `.tfvars` reais devem ser commitados no repositório para que os workflows funcionem. O `.gitignore` já está configurado para permitir arquivos `hml.tfvars` e `prd.tfvars`.
+Não é necessário configurar mais nada. Todos os valores são gerados automaticamente.
 
 ### Executando Workflows
 
 1. Navegue até **Actions** no repositório GitHub
-2. Selecione o workflow desejado (ex: "Cognito HML - Terraform Create")
+2. Selecione o workflow desejado (ex: "Cognito - Terraform Create")
 3. Clique em **Run workflow**
 4. Selecione a branch (geralmente `main`)
-5. Clique em **Run workflow** novamente
+5. **Selecione o ambiente** (`hml` ou `prd`)
+6. Clique em **Run workflow** novamente
 
 ### Ordem de Execução Recomendada
 
@@ -429,9 +401,9 @@ cp prd.tfvars.example prd.tfvars
    - Faça commit dos arquivos `.tfvars`
 
 2. **Deploy via GitHub Actions**:
-   - Execute workflow "Cognito HML - Terraform Create"
+   - Execute workflow "Cognito - Terraform Create" selecionando ambiente `hml`
    - Verifique os logs para garantir sucesso
-   - Execute workflow "Cognito PRD - Terraform Create"
+   - Execute workflow "Cognito - Terraform Create" selecionando ambiente `prd`
 
 #### Atualizações Subsequentes
 
@@ -448,6 +420,7 @@ Após a primeira implantação, você pode usar os workflows diretamente para ap
 - ✅ **Segurança**: Secrets gerenciados pelo GitHub
 - ✅ **Automação**: Backend S3/DynamoDB criado automaticamente se necessário
 - ✅ **Consistência**: Mesma versão do Terraform em todas as execuções
+- ✅ **Simplicidade**: Apenas um workflow para ambos ambientes (HML e PRD)
 
 ---
 

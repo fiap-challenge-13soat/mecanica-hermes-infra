@@ -18,6 +18,7 @@ variable "environment" {
 variable "cognito_domain_prefix" {
   description = "Prefixo do domínio do Cognito. Deve ser único globalmente."
   type        = string
+  default     = ""
 }
 
 variable "user_pool_name" {

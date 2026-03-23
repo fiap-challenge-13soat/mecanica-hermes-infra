@@ -1,0 +1,120 @@
+name: Cognito - Terraform Create
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        default: "hml"
+        type: choice
+        options:
+          - hml
+          - prd
+
+permissions:
+  contents: read
+
+jobs:
+  terraform:
+    name: "Terraform Apply - Cognito"
+    runs-on: ubuntu-latest
+    environment: aws
+
+    defaults:
+      run:
+        working-directory: ./cognito
+        shell: bash
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.14.3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ vars.AWS_DEFAULT_REGION }}
+
+      - name: Create S3 Bucket for Terraform State
+        run: |
+          if aws s3api head-bucket --bucket mechermes-tf-state-aws 2>/dev/null; then
+            echo "✓ S3 bucket already exists"
+          else
+            aws s3api create-bucket --bucket mechermes-tf-state-aws --region ${{ vars.AWS_DEFAULT_REGION }}
+            echo "✓ S3 bucket created, waiting 60 seconds..."
+            sleep 60
+          fi
+
+      - name: Create DynamoDB Table for Terraform Locks
+        run: |
+          if aws dynamodb describe-table --table-name mechermes-tf-locks 2>/dev/null; then
+            echo "✓ DynamoDB table already exists"
+          else
+            aws dynamodb create-table \
+              --table-name mechermes-tf-locks \
+              --attribute-definitions AttributeName=LockID,AttributeType=S \
+              --key-schema AttributeName=LockID,KeyType=HASH \
+              --provisioned-throughput ReadCapacityUnits=5,WriteCapacityUnits=5 \
+              --region ${{ vars.AWS_DEFAULT_REGION }}
+            echo "✓ DynamoDB table created, waiting 20 seconds..."
+            sleep 20
+          fi
+
+      - name: Terraform Init
+        run: terraform init -backend-config=backend-${{ inputs.environment }}.hcl
+
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive
+        continue-on-error: true
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Plan
+        run: terraform plan -var-file=${{ inputs.environment }}.tfvars -out=tfplan
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve tfplan
+
+      - name: Terraform Output
+        id: output
+        run: |
+          USER_POOL_ID=$(terraform output -raw cognito_user_pool_id)
+          CLIENT_ID=$(terraform output -raw cognito_client_id)
+          DOMAIN=$(terraform output -raw cognito_domain)
+          TOKEN_ENDPOINT=$(terraform output -raw cognito_token_endpoint)
+          SECRET_NAME=$(terraform output -raw cognito_secret_name)
+          
+          echo "USER_POOL_ID=$USER_POOL_ID" >> $GITHUB_OUTPUT
+          echo "CLIENT_ID=$CLIENT_ID" >> $GITHUB_OUTPUT
+          echo "DOMAIN=$DOMAIN" >> $GITHUB_OUTPUT
+          echo "TOKEN_ENDPOINT=$TOKEN_ENDPOINT" >> $GITHUB_OUTPUT
+          echo "SECRET_NAME=$SECRET_NAME" >> $GITHUB_OUTPUT
+
+      - name: Summary
+        run: |
+          echo "## Cognito - Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Cognito infrastructure deployed successfully!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Environment" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment**: \`${{ inputs.environment }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Cognito Details" >> $GITHUB_STEP_SUMMARY
+          echo "- **User Pool ID**: \`${{ steps.output.outputs.USER_POOL_ID }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Client ID**: \`${{ steps.output.outputs.CLIENT_ID }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Domain**: \`${{ steps.output.outputs.DOMAIN }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Token Endpoint**: \`${{ steps.output.outputs.TOKEN_ENDPOINT }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Secret Name**: \`${{ steps.output.outputs.SECRET_NAME }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Available Scopes" >> $GITHUB_STEP_SUMMARY
+          echo "- \`mechermes/admin\` - Administrative access" >> $GITHUB_STEP_SUMMARY
+          echo "- \`mechermes/client\` - Client access" >> $GITHUB_STEP_SUMMARY
