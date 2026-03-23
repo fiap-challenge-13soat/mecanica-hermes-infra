@@ -1,0 +1,59 @@
+name: Cognito - Terraform Destroy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        default: "hml"
+        type: choice
+        options:
+          - hml
+          - prd
+
+permissions:
+  contents: read
+
+jobs:
+  terraform:
+    name: "Terraform Destroy - Cognito"
+    runs-on: ubuntu-latest
+    environment: aws
+
+    defaults:
+      run:
+        working-directory: ./cognito
+        shell: bash
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.14.3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ vars.AWS_DEFAULT_REGION }}
+
+      - name: Terraform Init
+        run: terraform init -backend-config=backend-${{ inputs.environment }}.hcl
+
+      - name: Terraform Destroy
+        run: terraform destroy -var-file=${{ inputs.environment }}.tfvars -auto-approve
+
+      - name: Summary
+        run: |
+          echo "## Cognito - Destruction Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Cognito infrastructure destroyed successfully!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Environment" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment**: \`${{ inputs.environment }}\`" >> $GITHUB_STEP_SUMMARY

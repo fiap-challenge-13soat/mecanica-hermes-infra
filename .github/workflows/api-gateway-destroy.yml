@@ -1,14 +1,23 @@
-name: API Gateway HML - Terraform Create
+name: API Gateway - Terraform Destroy
 
 on:
   workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        default: "hml"
+        type: choice
+        options:
+          - hml
+          - prd
 
 permissions:
   contents: read
 
 jobs:
   terraform:
-    name: "Terraform Apply - API Gateway HML"
+    name: "Terraform Destroy - API Gateway"
     runs-on: ubuntu-latest
     environment: aws
 
@@ -35,7 +44,6 @@ jobs:
           aws-region: ${{ vars.AWS_DEFAULT_REGION }}
 
       - name: Discover Infrastructure Values
-        id: discover
         run: |
           echo "Discovering VPC ID..."
           VPC_ID=$(aws ec2 describe-vpcs \
@@ -60,7 +68,7 @@ jobs:
 
           echo "Discovering Cognito User Pool ARN..."
           COGNITO_POOL_ID=$(aws cognito-idp list-user-pools --max-results 60 \
-            --query "UserPools[?Name=='mechermes-hml-userpool'].Id | [0]" \
+            --query "UserPools[?Name=='mechermes-${{ inputs.environment }}-userpool'].Id | [0]" \
             --output text)
           COGNITO_ARN=$(aws cognito-idp describe-user-pool \
             --user-pool-id "$COGNITO_POOL_ID" \
@@ -77,7 +85,7 @@ jobs:
 
           echo "Discovering Lambda Function ARN..."
           LAMBDA_ARN=$(aws lambda get-function \
-            --function-name mechermes-hml-cognito-token-lambda \
+            --function-name mechermes-${{ inputs.environment }}-cognito-token-lambda \
             --query "Configuration.FunctionArn" \
             --output text)
           echo "✓ Lambda ARN: $LAMBDA_ARN"
@@ -96,11 +104,11 @@ jobs:
           echo "Generating terraform.tfvars..."
           cat > terraform.tfvars <<EOF
           project_name          = "mechermes"
-          environment           = "hml"
+          environment           = "${{ inputs.environment }}"
           cognito_user_pool_arn = "${COGNITO_ARN}"
           cognito_app_client_id = "${COGNITO_CLIENT_ID}"
           lambda_function_arn   = "${LAMBDA_ARN}"
-          lambda_function_name  = "mechermes-hml-cognito-token-lambda"
+          lambda_function_name  = "mechermes-${{ inputs.environment }}-cognito-token-lambda"
           vpc_id                = "${VPC_ID}"
           private_subnets       = ${PRIVATE_SUBNETS_JSON}
           api_backend_sg_id     = "${API_BACKEND_SG}"
@@ -111,42 +119,13 @@ jobs:
           cat terraform.tfvars
 
       - name: Terraform Init
-        run: terraform init -backend-config=backend-hml.hcl
+        run: terraform init -backend-config=backend-${{ inputs.environment }}.hcl
 
-      - name: Terraform Format Check
-        run: terraform fmt -check -recursive
-        continue-on-error: true
-
-      - name: Terraform Validate
-        run: terraform validate
-
-      - name: Terraform Plan
-        run: terraform plan -out=tfplan
-
-      - name: Terraform Apply
-        run: terraform apply -auto-approve tfplan
-
-      - name: Terraform Output
-        id: output
-        run: |
-          API_GATEWAY_URL=$(terraform output -raw stage_invoke_url)
-          echo "API_GATEWAY_URL=$API_GATEWAY_URL" >> $GITHUB_OUTPUT
-          echo "✓ API Gateway URL: $API_GATEWAY_URL"
+      - name: Terraform Destroy
+        run: terraform destroy -auto-approve
 
       - name: Summary
         run: |
-          echo "## API Gateway HML - Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "## API Gateway - Destruction Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "✅ API Gateway deployed successfully!" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Endpoint URL" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          echo "${{ steps.output.outputs.API_GATEWAY_URL }}" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Available Routes" >> $GITHUB_STEP_SUMMARY
-          echo "- \`POST /auth/generate-token\` - Generate Cognito token (no auth)" >> $GITHUB_STEP_SUMMARY
-          echo "- \`ANY /{proxy+}\` - API Backend (JWT required)" >> $GITHUB_STEP_SUMMARY
-          echo "- \`GET /health\` - Health check (no auth)" >> $GITHUB_STEP_SUMMARY
-          echo "- \`GET /healthz/live\` - Liveness probe (no auth)" >> $GITHUB_STEP_SUMMARY
-          echo "- \`GET /healthz/ready\` - Readiness probe (no auth)" >> $GITHUB_STEP_SUMMARY
+          echo "✅ API Gateway destroyed successfully!" >> $GITHUB_STEP_SUMMARY
