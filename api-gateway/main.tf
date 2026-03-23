@@ -1,0 +1,13 @@
+module "api_gateway" {
+  source = "./modules/api-gateway"
+
+  project_name          = var.project_name
+  environment           = var.environment
+  cognito_user_pool_arn = var.cognito_user_pool_arn
+  lambda_function_arn   = var.lambda_function_arn
+  lambda_function_name  = var.lambda_function_name
+  vpc_id                = var.vpc_id
+  private_subnets       = var.private_subnets
+  api_backend_sg_id     = var.api_backend_sg_id
+  nlb_target_port       = var.nlb_target_port
+}
