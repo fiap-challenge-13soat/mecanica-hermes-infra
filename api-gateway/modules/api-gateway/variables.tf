@@ -18,6 +18,11 @@ variable "cognito_user_pool_arn" {
   type        = string
 }
 
+variable "cognito_app_client_id" {
+  description = "ID do App Client do Cognito User Pool para JWT audience."
+  type        = string
+}
+
 variable "lambda_function_arn" {
   description = "ARN da função Lambda para integração."
   type        = string
