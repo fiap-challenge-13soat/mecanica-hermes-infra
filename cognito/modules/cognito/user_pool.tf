@@ -46,8 +46,4 @@ resource "aws_cognito_user_pool" "main" {
     Environment = var.environment
     ManagedBy   = "Terraform"
   }
-
-  lifecycle {
-    prevent_destroy = true
-  }
 }
