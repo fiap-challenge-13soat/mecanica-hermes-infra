@@ -91,14 +91,43 @@ jobs:
           echo "✓ Lambda ARN: $LAMBDA_ARN"
 
           echo "Discovering NLB Listener ARN..."
+          # First, list all NLBs in the VPC for debugging
+          echo "Available NLBs in VPC:"
+          aws elbv2 describe-load-balancers \
+            --query "LoadBalancers[?VpcId=='${VPC_ID}' && Type=='network'].[LoadBalancerName,Scheme,LoadBalancerArn]" \
+            --output table
+          
+          # Try to find internal NLB first, then fall back to any network LB
           NLB_ARN=$(aws elbv2 describe-load-balancers \
             --query "LoadBalancers[?VpcId=='${VPC_ID}' && Type=='network' && Scheme=='internal'] | [0].LoadBalancerArn" \
             --output text)
+          
+          if [ "$NLB_ARN" == "None" ] || [ -z "$NLB_ARN" ]; then
+            echo "⚠ No internal NLB found, trying any network load balancer..."
+            NLB_ARN=$(aws elbv2 describe-load-balancers \
+              --query "LoadBalancers[?VpcId=='${VPC_ID}' && Type=='network'] | [0].LoadBalancerArn" \
+              --output text)
+          fi
+          
+          if [ "$NLB_ARN" == "None" ] || [ -z "$NLB_ARN" ]; then
+            echo "❌ ERROR: No Network Load Balancer found in VPC ${VPC_ID}"
+            exit 1
+          fi
+          
           echo "✓ NLB ARN: $NLB_ARN"
+          
           NLB_LISTENER_ARN=$(aws elbv2 describe-listeners \
             --load-balancer-arn "$NLB_ARN" \
             --query "Listeners[?Port==\`80\`] | [0].ListenerArn" \
             --output text)
+          
+          if [ "$NLB_LISTENER_ARN" == "None" ] || [ -z "$NLB_LISTENER_ARN" ]; then
+            echo "❌ ERROR: No listener on port 80 found for NLB"
+            echo "Available listeners:"
+            aws elbv2 describe-listeners --load-balancer-arn "$NLB_ARN" --query "Listeners[*].[Port,Protocol]" --output table
+            exit 1
+          fi
+          
           echo "✓ NLB Listener ARN: $NLB_LISTENER_ARN"
 
           echo "Generating terraform.tfvars..."
