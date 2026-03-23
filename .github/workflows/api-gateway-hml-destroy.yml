@@ -52,7 +52,7 @@ jobs:
 
           echo "Discovering API Backend Security Group..."
           API_BACKEND_SG=$(aws ec2 describe-security-groups \
-            --filters "Name=tag:Name,Values=mechermes-sg" \
+            --filters "Name=tag:Name,Values=mechermes-eks-node" \
             --query "SecurityGroups[0].GroupId" \
             --output text)
           echo "✓ API Backend SG: $API_BACKEND_SG"
@@ -76,7 +76,7 @@ jobs:
 
           echo "Discovering NLB Listener ARN..."
           NLB_ARN=$(aws elbv2 describe-load-balancers \
-            --query "LoadBalancers[?VpcId=='${VPC_ID}' && Type=='network' && Scheme=='internal'] | [0].LoadBalancerArn" \
+            --query "LoadBalancers[?VpcId=='${VPC_ID}' && Type=='network'] | [0].LoadBalancerArn" \
             --output text)
           echo "✓ NLB ARN: $NLB_ARN"
           NLB_LISTENER_ARN=$(aws elbv2 describe-listeners \
