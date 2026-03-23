@@ -10,7 +10,7 @@ jobs:
   terraform:
     name: "Terraform Apply - API Gateway PRD"
     runs-on: ubuntu-latest
-    environment: api-gateway-prd
+    environment: aws
 
     defaults:
       run:
