@@ -18,7 +18,7 @@ resource "aws_lambda_permission" "api_gateway" {
 resource "aws_apigatewayv2_integration" "api_backend" {
   api_id           = aws_apigatewayv2_api.main.id
   integration_type = "HTTP_PROXY"
-  integration_uri  = data.aws_lb.k8s_nlb.arn
+  integration_uri  = var.nlb_listener_arn
 
   integration_method = "ANY"
   connection_type    = "VPC_LINK"

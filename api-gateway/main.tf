@@ -9,5 +9,6 @@ module "api_gateway" {
   vpc_id                = var.vpc_id
   private_subnets       = var.private_subnets
   api_backend_sg_id     = var.api_backend_sg_id
+  nlb_listener_arn      = var.nlb_listener_arn
   nlb_target_port       = var.nlb_target_port
 }
