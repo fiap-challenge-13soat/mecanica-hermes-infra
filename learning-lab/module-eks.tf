@@ -2,7 +2,7 @@ module "eks" {
   source = "./module-eks"
   name   = "${var.project_name}-eks"
 
-  kubernetes_version = "1.34"
+  kubernetes_version = "1.35"
 
   addons = {
     coredns = {}

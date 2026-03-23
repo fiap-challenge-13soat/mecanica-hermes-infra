@@ -33,7 +33,7 @@ variable "name" {
 }
 
 variable "kubernetes_version" {
-  description = "Kubernetes `<major>.<minor>` version to use for the EKS cluster (i.e.: `1.34`)"
+  description = "Kubernetes `<major>.<minor>` version to use for the EKS cluster (i.e.: `1.35`)"
   type        = string
   default     = null
 }
