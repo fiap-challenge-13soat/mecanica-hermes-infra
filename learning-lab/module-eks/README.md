@@ -45,7 +45,7 @@ module "eks" {
   version = "~> 21.0"
 
   name               = "example"
-  kubernetes_version = "1.34"
+  kubernetes_version = "1.35"
 
   # Optional
   endpoint_public_access = true
@@ -76,7 +76,7 @@ module "eks" {
   version = "~> 21.0"
 
   name               = "example"
-  kubernetes_version = "1.34"
+  kubernetes_version = "1.35"
 
   # Optional
   endpoint_public_access = true
@@ -110,7 +110,7 @@ module "eks" {
   version = "~> 21.0"
 
   name               = "my-cluster"
-  kubernetes_version = "1.34"
+  kubernetes_version = "1.35"
 
   # Optional
   endpoint_public_access = true
@@ -141,7 +141,7 @@ module "eks" {
   version = "~> 21.0"
 
   name               = "my-cluster"
-  kubernetes_version = "1.34"
+  kubernetes_version = "1.35"
 
   addons = {
     coredns                = {}
@@ -242,7 +242,7 @@ module "eks" {
   version = "~> 21.0"
 
   name               = "example"
-  kubernetes_version = "1.34"
+  kubernetes_version = "1.35"
 
   addons = {
     coredns                = {}
@@ -525,7 +525,7 @@ We are grateful to the community for contributing bugfixes and improvements! Ple
 | <a name="input_kms_key_service_users"></a> [kms\_key\_service\_users](#input\_kms\_key\_service\_users) | A list of IAM ARNs for [key service users](https://docs.aws.amazon.com/kms/latest/developerguide/key-policy-default.html#key-policy-service-integration) | `list(string)` | `[]` | no |
 | <a name="input_kms_key_source_policy_documents"></a> [kms\_key\_source\_policy\_documents](#input\_kms\_key\_source\_policy\_documents) | List of IAM policy documents that are merged together into the exported document. Statements must have unique `sid`s | `list(string)` | `[]` | no |
 | <a name="input_kms_key_users"></a> [kms\_key\_users](#input\_kms\_key\_users) | A list of IAM ARNs for [key users](https://docs.aws.amazon.com/kms/latest/developerguide/key-policy-default.html#key-policy-default-allow-users) | `list(string)` | `[]` | no |
-| <a name="input_kubernetes_version"></a> [kubernetes\_version](#input\_kubernetes\_version) | Kubernetes `<major>.<minor>` version to use for the EKS cluster (i.e.: `1.34`) | `string` | `null` | no |
+| <a name="input_kubernetes_version"></a> [kubernetes\_version](#input\_kubernetes\_version) | Kubernetes `<major>.<minor>` version to use for the EKS cluster (i.e.: `1.35`) | `string` | `null` | no |
 | <a name="input_name"></a> [name](#input\_name) | Name of the EKS cluster | `string` | `""` | no |
 | <a name="input_node_iam_role_additional_policies"></a> [node\_iam\_role\_additional\_policies](#input\_node\_iam\_role\_additional\_policies) | Additional policies to be added to the EKS Auto node IAM role | `map(string)` | `{}` | no |
 | <a name="input_node_iam_role_description"></a> [node\_iam\_role\_description](#input\_node\_iam\_role\_description) | Description of the EKS Auto node IAM role | `string` | `null` | no |

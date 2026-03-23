@@ -68,6 +68,13 @@ jobs:
             --output text)
           echo "✓ Cognito ARN: $COGNITO_ARN"
 
+          echo "Discovering Cognito App Client ID..."
+          COGNITO_CLIENT_ID=$(aws cognito-idp list-user-pool-clients \
+            --user-pool-id "$COGNITO_POOL_ID" \
+            --query "UserPoolClients[0].ClientId" \
+            --output text)
+          echo "✓ Cognito Client ID: $COGNITO_CLIENT_ID"
+
           echo "Discovering Lambda Function ARN..."
           LAMBDA_ARN=$(aws lambda get-function \
             --function-name mechermes-prd-cognito-token-lambda \
@@ -77,7 +84,7 @@ jobs:
 
           echo "Discovering NLB Listener ARN..."
           NLB_ARN=$(aws elbv2 describe-load-balancers \
-            --query "LoadBalancers[?VpcId=='${VPC_ID}' && Type=='network'] | [0].LoadBalancerArn" \
+            --query "LoadBalancers[?VpcId=='${VPC_ID}' && Type=='network' && Scheme=='internal'] | [0].LoadBalancerArn" \
             --output text)
           echo "✓ NLB ARN: $NLB_ARN"
           NLB_LISTENER_ARN=$(aws elbv2 describe-listeners \
@@ -88,9 +95,10 @@ jobs:
 
           echo "Generating terraform.tfvars..."
           cat > terraform.tfvars <<EOF
-          project_name         = "mechermes"
+          project_name          = "mechermes"
           environment           = "prd"
           cognito_user_pool_arn = "${COGNITO_ARN}"
+          cognito_app_client_id = "${COGNITO_CLIENT_ID}"
           lambda_function_arn   = "${LAMBDA_ARN}"
           lambda_function_name  = "mechermes-prd-cognito-token-lambda"
           vpc_id                = "${VPC_ID}"
