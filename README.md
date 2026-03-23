@@ -15,6 +15,7 @@ Este repositório é responsável por criar o cluster para realizar o deploy do 
 ![Amazon S3](https://img.shields.io/badge/Amazon%20S3-569A31?logo=amazons3&logoColor=white)
 ![Amazon DynamoDB](https://img.shields.io/badge/Amazon%20DynamoDB-4053D6?logo=amazondynamodb&logoColor=white)
 ![Amazon Cognito](https://img.shields.io/badge/Amazon%20Cognito-232F3E?logo=amazoncognito&logoColor=white)
+![Amazon API Gateway](https://img.shields.io/badge/Amazon%20API%20Gateway-FF4F8B?logo=amazonaws&logoColor=white)
 ![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-CI/CD-2088FF?logo=githubactions&logoColor=white)
 
 - **Terraform** para provisionamento de infraestrutura como código (IaC)
@@ -23,25 +24,27 @@ Este repositório é responsável por criar o cluster para realizar o deploy do 
 - **Amazon EKS** para o cluster Kubernetes
 - **S3** para armazenamento do estado do Terraform
 - **DynamoDB** para lock de estado do Terraform
-- **Cognito** para provisionar a infraestrutura de autenticação OAuth2 para a aplicação.
+- **Cognito** para provisionar a infraestrutura de autenticação OAuth2 para a aplicação
+- **API Gateway** como ponto de entrada unificado com autenticação Cognito e integração com Lambda e API backend
 - **GitHub Actions** para execução da pipeline.
 
 ---
 
 ## Arquitetura dos Projetos de Infra
 
-Nossa infraestrutura para disponibilizar um ambiente completo e funcional é composta por quatro passos sequenciais que são executados em diferentes repositórios:
+Nossa infraestrutura para disponibilizar um ambiente completo e funcional é composta por cinco passos sequenciais que são executados em diferentes repositórios:
 
-1. Mecânica Hermes - Infra Kubernetes (Este projeto)
+1. Mecânica Hermes - Infra Kubernetes (Este projeto - módulo `aws/`)
 2. Mecânica Hermes - Infra Cognito (Este projeto - módulo `cognito/`)
 3. [Mecânica Hermes - Infra Database](https://github.com/fiap-challenge-13soat/mecanica-hermes-db)
 4. [Mecânica Hermes - Deploy Kubernetes](https://github.com/fiap-challenge-13soat/mecanica-hermes-k8s)
+5. Mecânica Hermes - API Gateway (Este projeto - módulo `api-gateway/`)
 
 ---
 
 ```mermaid
 flowchart
-  subgraph Step1["Repo: Infra Kubernetes (este projeto)"]
+  subgraph Step1["Repo: Infra Kubernetes (este projeto - aws/)"]
    TF["Terraform"]
    VPC["VPC: mechermes-vpc"]
    SG["Security Group: mechermes-sg"]
@@ -72,6 +75,13 @@ flowchart
    Lambda["Lambda Functions"]
   end
 
+  subgraph Step6["Repo: API Gateway (este projeto - api-gateway/)"]
+   TF_APIG["Terraform"]
+   APIG["API Gateway HTTP"]
+   VPCLink["VPC Link"]
+   CognitoAuth["Cognito Authorizer"]
+  end
+
   TF --> VPC
   TF --> SG
   TF --> Subnet
@@ -96,6 +106,19 @@ flowchart
   Cognito --> Apps
   Cognito --> Lambda
   CognitoSecret --> Lambda
+
+  TF_APIG --> APIG
+  TF_APIG --> VPCLink
+  TF_APIG --> CognitoAuth
+  TF_APIG --> S3
+  TF_APIG --> DDB
+  
+  VPC --> VPCLink
+  Subnet --> VPCLink
+  Cognito --> CognitoAuth
+  APIG --> CognitoAuth
+  APIG --> Lambda
+  VPCLink --> Apps
 ```
 
 ## Execução pela Pipeline
@@ -146,12 +169,22 @@ Dispare a Action Trigger manual de acordo com o seu ambiente:
 - **HML:** `Cognito HML - Terraform Create`.
 - **PRD:** `Cognito PRD - Terraform Create`.
 
+**API Gateway (Ponto de Entrada Unificado):**
+
+- **HML:** `API Gateway HML - Terraform Create`.
+- **PRD:** `API Gateway PRD - Terraform Create`.
+
 ---
 
 ### Destroy Environment
 
 ---
 Dispare a Action Trigger manual de acordo com o seu ambiente:
+
+**API Gateway (Ponto de Entrada Unificado):**
+
+- **HML:** `API Gateway HML - Terraform Destroy`.
+- **PRD:** `API Gateway PRD - Terraform Destroy`.
 
 **Cognito (Autenticação):**
 
@@ -229,3 +262,19 @@ Confira o [README.md](./cognito/README.md) com maiores detalhes para este deploy
 - Resource Server com scopes customizados (`mechermes/admin`, `mechermes/client`)
 - Cognito Domain para endpoints OAuth2
 - AWS Secrets Manager para armazenamento seguro de credenciais
+
+---
+
+### Deploy do API Gateway (Ponto de Entrada Unificado)
+
+Confira o [README.md](./api-gateway/README.md) com maiores detalhes para este deploy.
+
+**Recursos provisionados:**
+
+- AWS API Gateway HTTP API com Cognito Authorizer
+- VPC Link para integração privada com o backend EKS
+- Lambda Integration para endpoint de geração de tokens
+- Rotas configuradas com autenticação JWT
+- CloudWatch Logs para observabilidade
+
+**Quick Start:** Veja o [QUICK-START.md](./api-gateway/QUICK-START.md) para deploy rápido em minutos.

@@ -1,0 +1,9 @@
+project_name          = "mechermes"
+environment           = "hml"
+cognito_user_pool_arn = "arn:aws:cognito-idp:us-east-1:123456789012:userpool/us-east-1_XXXXXXXXX"
+lambda_function_arn   = "arn:aws:lambda:us-east-1:123456789012:function:mechermes-hml-cognito-token-lambda"
+lambda_function_name  = "mechermes-hml-cognito-token-lambda"
+vpc_id                = "vpc-xxxxxxxxxxxxxxxxx"
+private_subnets       = ["subnet-xxxxxxxxxxxxxxxxx", "subnet-yyyyyyyyyyyyyyyyy", "subnet-zzzzzzzzzzzzzzzzz"]
+api_backend_sg_id     = "sg-xxxxxxxxxxxxxxxxx"
+nlb_target_port       = 80
