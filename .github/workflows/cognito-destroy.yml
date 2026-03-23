@@ -46,6 +46,14 @@ jobs:
       - name: Terraform Init
         run: terraform init -backend-config=backend-${{ inputs.environment }}.hcl
 
+      - name: Force Delete Secrets Manager Secret
+        run: |
+          aws secretsmanager delete-secret \
+            --secret-id mechermes-${{ inputs.environment }}-cognito-credentials \
+            --force-delete-without-recovery \
+            --region ${{ vars.AWS_DEFAULT_REGION }} || true
+        continue-on-error: true
+
       - name: Terraform Destroy
         run: terraform destroy -var-file=${{ inputs.environment }}.tfvars -auto-approve
 
