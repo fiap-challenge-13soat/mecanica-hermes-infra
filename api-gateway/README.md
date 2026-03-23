@@ -68,6 +68,7 @@ flowchart TB
 ## Recursos Gerenciados
 
 ### API Gateway
+
 - **HTTP API**: API Gateway com suporte a CORS
 - **Cognito Authorizer**: Autenticador JWT usando Cognito User Pool
 - **CloudWatch Logs**: Logs de acesso e execução
@@ -75,17 +76,20 @@ flowchart TB
 ### Integrações
 
 #### 1. Lambda Integration
+
 - **Endpoint**: `POST /auth/generate-token`
 - **Autenticação**: Nenhuma (público)
 - **Função**: Gera tokens de acesso via Cognito para clientes autenticados
 
 #### 2. VPC Link Integration
+
 - **Endpoint**: `ANY /{proxy+}`
 - **Autenticação**: JWT obrigatório
 - **Função**: Proxy reverso para o backend da API no EKS
 - **Health Checks**: `/health`, `/healthz/live`, `/healthz/ready` (sem autenticação)
 
 ### VPC Link
+
 - **Security Group**: Permite comunicação com o NLB
 - **Subnets**: Subnets privadas da VPC
 
@@ -123,18 +127,21 @@ api-gateway/
 ## Fluxo de Requisições
 
 ### 1. Geração de Token (Sem Autenticação)
+
 ```
 Cliente -> API Gateway -> Lambda -> Cognito
        <- Token JWT <---------<-
 ```
 
 ### 2. Acesso à API (Com Autenticação JWT)
+
 ```
 Cliente -> API Gateway -> Valida JWT (Cognito) -> VPC Link -> NLB -> API Backend
        <- Resposta <--------<---------<---------<------<-----
 ```
 
 ### 3. Health Checks (Sem Autenticação)
+
 ```
 Cliente/Monitor -> API Gateway -> VPC Link -> NLB -> API Backend -> /health
                <- Status <------<---------<------<------------<-
@@ -176,6 +183,7 @@ O módulo utiliza **data sources** para descobrir automaticamente:
 - ✅ Network Load Balancer (criado pelo serviço K8s)
 
 **Você só precisa fornecer:**
+
 - ARN do Cognito User Pool
 - ARN e nome da função Lambda
 
@@ -231,12 +239,14 @@ aws configure
 ### 2. Inicializar Terraform
 
 **Para HML:**
+
 ```bash
 cd api-gateway
 terraform init -backend-config=backend-hml.hcl
 ```
 
 **Para PRD:**
+
 ```bash
 cd api-gateway
 terraform init -backend-config=backend-prd.hcl
@@ -247,26 +257,31 @@ terraform init -backend-config=backend-prd.hcl
 Execute os seguintes comandos para descobrir os valores necessários:
 
 **VPC ID:**
+
 ```bash
 aws ec2 describe-vpcs --filters "Name=tag:Name,Values=mechermes-vpc" --query "Vpcs[0].VpcId" --output text
 ```
 
 **Subnets Privadas:**
+
 ```bash
 aws ec2 describe-subnets --filters "Name=tag:Name,Values=mechermes-vpc-private-*" --query "Subnets[*].SubnetId" --output text
 ```
 
 **Cognito User Pool ARN:**
+
 ```bash
 aws cognito-idp list-user-pools --max-results 60 --query "UserPools[?Name=='mechermes-hml-userpool'].Arn | [0]" --output text
 ```
 
 **Lambda Function ARN:**
+
 ```bash
 aws lambda get-function --function-name mechermes-hml-cognito-token-lambda --query "Configuration.FunctionArn" --output text
 ```
 
 **Security Group do Backend:**
+
 ```bash
 aws ec2 describe-security-groups --filters "Name=tag:Name,Values=mechermes-sg" --query "SecurityGroups[0].GroupId" --output text
 ```
@@ -283,11 +298,13 @@ cp hml.tfvars.example hml.tfvars
 ### 5. Planejar e Aplicar
 
 **Planejar:**
+
 ```bash
 terraform plan -var-file=hml.tfvars
 ```
 
 **Aplicar:**
+
 ```bash
 terraform apply -var-file=hml.tfvars
 ```
@@ -344,6 +361,7 @@ curl "$API_GATEWAY_URL/healthz/ready"
 ### CloudWatch Logs
 
 Os logs do API Gateway são armazenados em:
+
 ```
 /aws/apigateway/mechermes-hml
 /aws/apigateway/mechermes-prd
@@ -376,7 +394,8 @@ Os logs do API Gateway são armazenados em:
 
 **Causa**: Backend não está respondendo
 
-**Solução**: 
+**Solução**:
+
 1. Verifique se os pods estão rodando: `kubectl get pods -n mecanica-hermes-hml`
 2. Verifique se o NLB está healthy
 3. Verifique os security groups
@@ -398,11 +417,13 @@ O API Gateway atua apenas como um proxy reverso, não interceptando ou modifican
 ## Migração do Load Balancer
 
 ### Antes (LoadBalancer Service)
+
 ```
 Cliente -> ALB (Internet-facing) -> Service (LoadBalancer) -> Pods
 ```
 
 ### Depois (API Gateway + VPC Link)
+
 ```
 Cliente -> API Gateway -> Cognito (Auth) -> VPC Link -> NLB -> Service (LoadBalancer) -> Pods
 ```
@@ -414,15 +435,18 @@ Cliente -> API Gateway -> Cognito (Auth) -> VPC Link -> NLB -> Service (LoadBala
 ## Segurança
 
 ### Autenticação
+
 - ✅ JWT obrigatório para todas as rotas da API (exceto health checks)
 - ✅ Tokens validados automaticamente pelo Cognito Authorizer
 
 ### Rede
+
 - ✅ VPC Link para comunicação privada
 - ✅ Security Groups controlando acesso
 - ✅ Backend em subnets privadas
 
 ### Logs e Auditoria
+
 - ✅ Todos os acessos logados no CloudWatch
 - ✅ Rastreamento de requests com `requestId`
 

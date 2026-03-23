@@ -52,6 +52,7 @@ No repositório `mecanica-hermes-infra`, configure as secrets no GitHub:
 Após o deploy, a URL do API Gateway estará disponível no **Summary** da pipeline.
 
 Exemplo:
+
 ```
 https://abc123xyz.execute-api.us-east-1.amazonaws.com
 ```
@@ -238,7 +239,8 @@ terraform destroy -var-file=hml.tfvars -auto-approve
 
 **Causa**: Service K8s ainda não criou o NLB
 
-**Solução**: 
+**Solução**:
+
 1. Verifique se o serviço K8s está rodando: `kubectl get svc -n mecanica-hermes-hml`
 2. Aguarde o NLB ser criado (pode levar ~2-3 minutos)
 

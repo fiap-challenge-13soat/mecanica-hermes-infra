@@ -48,7 +48,7 @@ jobs:
           PRIVATE_SUBNETS=$(aws ec2 describe-subnets \
             --filters "Name=tag:Name,Values=mechermes-vpc-private-*" \
             --query "Subnets[*].SubnetId" \
-            --output json | jq -r '[.[] | "\"" + . + "\""] | join(",")')
+            --output json | jq -r 'join(",")')
           echo "PRIVATE_SUBNETS=$PRIVATE_SUBNETS" >> $GITHUB_OUTPUT
 
           echo "Discovering API Backend Security Group..."
@@ -83,7 +83,7 @@ jobs:
             -var="lambda_function_arn=${{ steps.discover.outputs.LAMBDA_ARN }}" \
             -var="lambda_function_name=mechermes-hml-cognito-token-lambda" \
             -var="vpc_id=${{ steps.discover.outputs.VPC_ID }}" \
-            -var="private_subnets=[${{ steps.discover.outputs.PRIVATE_SUBNETS }}]" \
+            -var='private_subnets=[${{ steps.discover.outputs.PRIVATE_SUBNETS }}]' \
             -var="api_backend_sg_id=${{ steps.discover.outputs.API_BACKEND_SG }}" \
             -var="nlb_target_port=80"
 
