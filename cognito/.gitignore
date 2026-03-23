@@ -1,0 +1,23 @@
+# Terraform
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Variáveis com dados sensíveis
+*.tfvars
+!*.tfvars.example
+
+# Diretórios diversos
+.DS_Store
+.idea/
+*.swp
+*.swo
+*~

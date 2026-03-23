@@ -20,9 +20,9 @@ O `aws_account_id` é injetado automaticamente via GitHub Secret `AWS_ACCOUNT_ID
 
 | Secret         | Descrição                                                              |
 | -------------- | ---------------------------------------------------------------------- |
-| AWS_ACCOUNT_ID | ID numérico da conta AWS. Usado para montar os ARNs das roles do EKS. |
+| AWS_ACCOUNT_ID | ID numérico da conta AWS. Usado para montar os ARNs das roles do EKS.  |
 
-#### Para execução local, exporte a variável antes de rodar o Terraform:
+#### Para execução local, exporte a variável antes de rodar o Terraform
 
 ```bash
 export TF_VAR_aws_account_id="SEU_ACCOUNT_ID"

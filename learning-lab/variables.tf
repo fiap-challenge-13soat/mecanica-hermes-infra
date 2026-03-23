@@ -7,6 +7,7 @@ variable "project_name" {
 variable "aws_account_id" {
   description = "ID da conta AWS (usado para construir ARNs de roles)."
   type        = string
+  default     = "211125510254"
 }
 
 locals {
