@@ -14,6 +14,7 @@ Este repositório é responsável por criar o cluster para realizar o deploy do 
 ![EKS](https://img.shields.io/badge/EKS-Kubernetes-FF9900?logo=amazon-eks&logoColor=white)
 ![Amazon S3](https://img.shields.io/badge/Amazon%20S3-569A31?logo=amazons3&logoColor=white)
 ![Amazon DynamoDB](https://img.shields.io/badge/Amazon%20DynamoDB-4053D6?logo=amazondynamodb&logoColor=white)
+![Amazon Cognito](https://img.shields.io/badge/Amazon%20Cognito-232F3E?logo=amazoncognito&logoColor=white)
 ![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-CI/CD-2088FF?logo=githubactions&logoColor=white)
 
 - **Terraform** para provisionamento de infraestrutura como código (IaC)
@@ -22,17 +23,19 @@ Este repositório é responsável por criar o cluster para realizar o deploy do 
 - **Amazon EKS** para o cluster Kubernetes
 - **S3** para armazenamento do estado do Terraform
 - **DynamoDB** para lock de estado do Terraform
+- **Cognito** para provisionar a infraestrutura de autenticação OAuth2 para a aplicação.
 - **GitHub Actions** para execução da pipeline.
 
 ---
 
 ## Arquitetura dos Projetos de Infra
 
-Nossa infraestrutura para disponibilizar um ambiente completo e funcional é composta por três passos sequenciais que são executados em diferentes repositórios:
+Nossa infraestrutura para disponibilizar um ambiente completo e funcional é composta por quatro passos sequenciais que são executados em diferentes repositórios:
 
 1. Mecânica Hermes - Infra Kubernetes (Este projeto)
-2. [Mecânica Hermes - Infra Database](https://github.com/fiap-challenge-13soat/mecanica-hermes-db)
-3. [Mecânica Hermes - Deploy Kubernetes](https://github.com/fiap-challenge-13soat/mecanica-hermes-k8s)
+2. Mecânica Hermes - Infra Cognito (Este projeto - módulo `cognito/`)
+3. [Mecânica Hermes - Infra Database](https://github.com/fiap-challenge-13soat/mecanica-hermes-db)
+4. [Mecânica Hermes - Deploy Kubernetes](https://github.com/fiap-challenge-13soat/mecanica-hermes-k8s)
 
 ---
 
@@ -47,18 +50,26 @@ flowchart
    Nodes["Node Groups"]
   end
 
-  subgraph Step2["Repo: Infra Database"]
+  subgraph Step2["Repo: Infra Cognito (este projeto - cognito/)"]
+   TF_Cognito["Terraform"]
+   Cognito["AWS Cognito User Pool"]
+   CognitoClient["App Client"]
+   CognitoSecret["Secrets Manager"]
+  end
+
+  subgraph Step3["Repo: Infra Database"]
    Data["Data sources: VPC/SG/Subnets"]
    RDS["RDS PostgreSQL (privado)"]
   end
 
-  subgraph Step3["Conta Externa: Terraform State & Lock"]
+  subgraph Step4["Conta Externa: Terraform State & Lock"]
    S3["S3: tfstate"]
    DDB["DynamoDB: tf locks"]
   end
 
-  subgraph Step4["Repo: Deploy Kubernetes"]
+  subgraph Step5["Repo: Deploy Kubernetes"]
    Apps["Apps publicados no Kubernetes"]
+   Lambda["Lambda Functions"]
   end
 
   TF --> VPC
@@ -69,6 +80,12 @@ flowchart
   TF --> S3
   TF --> DDB
 
+  TF_Cognito --> Cognito
+  TF_Cognito --> CognitoClient
+  TF_Cognito --> CognitoSecret
+  TF_Cognito --> S3
+  TF_Cognito --> DDB
+
   VPC --> Data
   SG --> Data
   Subnet --> Data
@@ -76,6 +93,9 @@ flowchart
 
   EKS --> Apps
   RDS --> Apps
+  Cognito --> Apps
+  Cognito --> Lambda
+  CognitoSecret --> Lambda
 ```
 
 ## Execução pela Pipeline
@@ -92,6 +112,15 @@ flowchart
 | AWS_DEFAULT_REGION    | Região padrão da AWS (configurada como variável de ambiente).          |
 | AWS_ACCOUNT_ID        | ID numérico da conta AWS, usado para montar os ARNs das roles do EKS.  |
 
+**Secrets adicionais para Cognito (configurar nos environments `cognito-hml` e `cognito-prd`):**
+
+| Variável (HML)                     | Variável (PRD)                     | Descrição                                    |
+| ---------------------------------- | ---------------------------------- | -------------------------------------------- |
+| HML_USER_POOL_ID                   | PRD_USER_POOL_ID                   | ID do User Pool do Cognito                   |
+| HML_RESOURCE_SERVER_IDENTIFIER     | PRD_RESOURCE_SERVER_IDENTIFIER     | Identificador do Resource Server             |
+| HML_CLIENT_ID                      | PRD_CLIENT_ID                      | ID do App Client do Cognito                  |
+| HML_DOMAIN_PREFIX                  | PRD_DOMAIN_PREFIX                  | Prefixo do domínio Cognito                   |
+
 ---
 
 Para gerar nova Key e Token use o comando:
@@ -107,8 +136,15 @@ aws sts get-session-token
 ---
 Dispare a Action Trigger manual de acordo com o seu ambiente:
 
+**Infraestrutura Base (EKS/VPC):**
+
 - **Learning Lab:** `Learning Lab - Terraform Create`.
 - **AWS com Usuário Admin:** `AWS Admin - Terraform Create`.
+
+**Cognito (Autenticação):**
+
+- **HML:** `Cognito HML - Terraform Create`.
+- **PRD:** `Cognito PRD - Terraform Create`.
 
 ---
 
@@ -116,6 +152,13 @@ Dispare a Action Trigger manual de acordo com o seu ambiente:
 
 ---
 Dispare a Action Trigger manual de acordo com o seu ambiente:
+
+**Cognito (Autenticação):**
+
+- **HML:** `Cognito HML - Terraform Destroy`.
+- **PRD:** `Cognito PRD - Terraform Destroy`.
+
+**Infraestrutura Base (EKS/VPC):**
 
 - **Learning Lab:** `Learning Lab - Terraform Destroy`.
 - **AWS com Usuário Admin:** `AWS Admin - Terraform Destroy`.
@@ -172,3 +215,17 @@ Confira o [README.md](./learning-lab/README.md) com maiores detalhes para este d
 ### Deploy do Terraform no AWS com usuário admin
 
 Confira o [README.md](./aws/README.md) com maiores detalhes para este deploy.
+
+---
+
+### Deploy do Cognito (Autenticação e Autorização)
+
+Confira o [README.md](./cognito/README.md) com maiores detalhes para este deploy.
+
+**Recursos provisionados:**
+
+- AWS Cognito User Pool
+- App Client com suporte a `client_credentials` flow
+- Resource Server com scopes customizados (`mechermes/admin`, `mechermes/client`)
+- Cognito Domain para endpoints OAuth2
+- AWS Secrets Manager para armazenamento seguro de credenciais

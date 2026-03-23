@@ -1,0 +1,8 @@
+# Variáveis específicas para o ambiente PRD
+environment = "prd"
+
+# IMPORTANTE: Substitua os placeholders pelos valores reais do seu Cognito existente
+# Nome do Resource Server
+resource_server_name = "Mecanica Hermes API"
+cognito_domain_prefix = "<COGNITO_DOMAIN_PREFIX_PRD>"
+user_pool_name        = "<USER_POOL_NAME_PRD>"
