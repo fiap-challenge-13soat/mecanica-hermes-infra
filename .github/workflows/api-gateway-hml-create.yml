@@ -89,13 +89,15 @@ jobs:
       - name: Terraform Plan
         run: |
           terraform plan \
+            -var="project_name=mechermes" \
+            -var="environment=hml" \
             -var="cognito_user_pool_arn=${{ steps.discover.outputs.COGNITO_ARN }}" \
             -var="lambda_function_arn=${{ steps.discover.outputs.LAMBDA_ARN }}" \
             -var="lambda_function_name=mechermes-hml-cognito-token-lambda" \
             -var="vpc_id=${{ steps.discover.outputs.VPC_ID }}" \
             -var="private_subnets=${{ steps.discover.outputs.PRIVATE_SUBNETS }}" \
             -var="api_backend_sg_id=${{ steps.discover.outputs.API_BACKEND_SG }}" \
-            -var-file=hml.tfvars \
+            -var="nlb_target_port=80" \
             -out=tfplan
 
       - name: Terraform Apply
