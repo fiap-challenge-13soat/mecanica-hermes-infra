@@ -6,4 +6,5 @@ lambda_function_name  = "mechermes-hml-cognito-token-lambda"
 vpc_id                = "vpc-xxxxxxxxxxxxxxxxx"
 private_subnets       = ["subnet-xxxxxxxxxxxxxxxxx", "subnet-yyyyyyyyyyyyyyyyy", "subnet-zzzzzzzzzzzzzzzzz"]
 api_backend_sg_id     = "sg-xxxxxxxxxxxxxxxxx"
+nlb_listener_arn      = "arn:aws:elasticloadbalancing:us-east-1:123456789012:listener/net/xxxxxxxxx/yyyyyyyyy/zzzzzzzzzz"
 nlb_target_port       = 80
