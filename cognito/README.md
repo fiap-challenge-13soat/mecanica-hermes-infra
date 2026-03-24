@@ -50,7 +50,7 @@ flowchart TB
     end
     
     subgraph Secrets["AWS Secrets Manager"]
-        Secret["cognito-credentials"]
+        Secret["mechermes-{env}-cognito-credentials"]
     end
     
     subgraph State["Terraform State"]
@@ -94,7 +94,6 @@ cognito/
 ├── outputs.tf                     # Outputs raiz
 ├── prd.tfvars.example             # Exemplo de variáveis para PRD
 ├── provider.tf                    # Provider AWS
-├── terraform.tfvars.example       # Exemplo de variáveis genérico
 └── variables.tf                   # Variáveis raiz
 ```
 
@@ -230,7 +229,6 @@ terraform import -var-file=hml.tfvars \
 
 **Exemplo**:
 
-
 ```bash
 terraform import -var-file=hml.tfvars \
   module.cognito.aws_cognito_user_pool.main \
@@ -246,7 +244,6 @@ terraform import -var-file=hml.tfvars \
 ```
 
 **Exemplo**:
-
 
 ```bash
 terraform import -var-file=hml.tfvars \
@@ -264,7 +261,6 @@ terraform import -var-file=hml.tfvars \
 
 **Exemplo**:
 
-
 ```bash
 terraform import -var-file=hml.tfvars \
   module.cognito.aws_cognito_user_pool_client.main \
@@ -280,7 +276,6 @@ terraform import -var-file=hml.tfvars \
 ```
 
 **Exemplo**:
-
 
 ```bash
 terraform import -var-file=hml.tfvars \
@@ -453,7 +448,7 @@ terraform output
 
 A Lambda deve:
 
-1. Obter o ARN do secret via variável de ambiente ou output do Terraform
+1. Obter o nome do secret via output do Terraform (`cognito_secret_name`)
 2. Usar AWS SDK para ler o secret do Secrets Manager
 3. Extrair `client_id` e `client_secret` do JSON
 4. Fazer requisição POST para o `token_endpoint` com `grant_type=client_credentials`
@@ -462,8 +457,9 @@ A Lambda deve:
 
 ```bash
 COGNITO_SECRET_ID=mechermes-hml-cognito-credentials
-COGNITO_TOKEN_ENDPOINT=https://mechermes-hml.auth.us-east-1.amazoncognito.com/oauth2/token
 ```
+
+> **Observação:** o repositório `mecanica-hermes-lambda` cria/atualiza um secret adicional (`mechermes-{env}-cognito-client-secret`) que consolida credenciais do Cognito e senha do banco para o fluxo específico da Lambda de token.
 
 ### API Application
 
@@ -526,7 +522,10 @@ Verifique as permissões IAM da aplicação consumidora. Ela precisa de:
     "secretsmanager:GetSecretValue",
     "secretsmanager:DescribeSecret"
   ],
-  "Resource": "arn:aws:secretsmanager:us-east-1:*:secret:mechermes-*-cognito-credentials-*"
+  "Resource": [
+    "arn:aws:secretsmanager:us-east-1:*:secret:mechermes-*-cognito-credentials-*",
+    "arn:aws:secretsmanager:us-east-1:*:secret:mechermes-*-cognito-client-secret-*"
+  ]
 }
 ```
 

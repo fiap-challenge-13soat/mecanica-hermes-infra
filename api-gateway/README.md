@@ -128,21 +128,21 @@ api-gateway/
 
 ### 1. Geração de Token (Sem Autenticação)
 
-```
+```text
 Cliente -> API Gateway -> Lambda -> Cognito
-       <- Token JWT <---------<-
+       <- Confirmação de envio por e-mail <-
 ```
 
 ### 2. Acesso à API (Com Autenticação JWT)
 
-```
+```text
 Cliente -> API Gateway -> Valida JWT (Cognito) -> VPC Link -> NLB -> API Backend
        <- Resposta <--------<---------<---------<------<-----
 ```
 
 ### 3. Health Checks (Sem Autenticação)
 
-```
+```text
 Cliente/Monitor -> API Gateway -> VPC Link -> NLB -> API Backend -> /health
                <- Status <------<---------<------<------------<-
 ```
@@ -152,8 +152,8 @@ Cliente/Monitor -> API Gateway -> VPC Link -> NLB -> API Backend -> /health
 ## Rotas Configuradas
 
 | Rota | Método | Autenticação | Destino | Descrição |
-|------|--------|-------------|---------|-----------|
-| `/auth/generate-token` | POST | ❌ Não | Lambda | Gera token de acesso Cognito |
+| --- | --- | --- | --- | --- |
+| `/auth/generate-token` | POST | ❌ Não | Lambda | Solicita geração e envio do token por e-mail |
 | `/{proxy+}` | ANY | ✅ JWT | API Backend | Todas as rotas da API |
 | `/health` | GET | ❌ Não | API Backend | Health check |
 | `/healthz/live` | GET | ❌ Não | API Backend | Liveness probe |
@@ -193,38 +193,27 @@ O módulo utiliza **data sources** para descobrir automaticamente:
 
 ### Secrets Necessárias
 
-Configure as seguintes secrets no GitHub (environments `api-gateway-hml` e `api-gateway-prd`):
+Configure as seguintes secrets no GitHub (environment `aws`):
 
 | Variável | Descrição |
-|----------|-----------|
+| --- | --- |
 | `AWS_ACCESS_KEY_ID` | Chave de acesso da AWS |
 | `AWS_SECRET_ACCESS_KEY` | Chave secreta da AWS |
 | `AWS_SESSION_TOKEN` | Token de sessão da AWS |
 
 ### Variables de Ambiente
 
-| Variável (HML) | Variável (PRD) | Descrição |
-|----------------|----------------|-----------|
-| `HML_COGNITO_USER_POOL_ARN` | `PRD_COGNITO_USER_POOL_ARN` | ARN do User Pool do Cognito |
-| `HML_LAMBDA_FUNCTION_ARN` | `PRD_LAMBDA_FUNCTION_ARN` | ARN da função Lambda |
-| `HML_LAMBDA_FUNCTION_NAME` | `PRD_LAMBDA_FUNCTION_NAME` | Nome da função Lambda |
-| `HML_VPC_ID` | `PRD_VPC_ID` | ID da VPC |
-| `HML_PRIVATE_SUBNETS` | `PRD_PRIVATE_SUBNETS` | IDs das subnets privadas (separadas por vírgula) |
-| `HML_API_BACKEND_SG_ID` | `PRD_API_BACKEND_SG_ID` | ID do Security Group do backend |
+| Variável | Descrição |
+| --- | --- |
+| `AWS_DEFAULT_REGION` | Região AWS utilizada pelo workflow |
 
 ### Deploy
 
-Dispare a Action manual de acordo com o seu ambiente:
-
-- **HML:** `API Gateway HML - Terraform Create`
-- **PRD:** `API Gateway PRD - Terraform Create`
+Dispare a Action manual `API Gateway - Terraform Create` e informe o input `environment` (`hml` ou `prd`).
 
 ### Destroy
 
-Dispare a Action manual de acordo com o seu ambiente:
-
-- **HML:** `API Gateway HML - Terraform Destroy`
-- **PRD:** `API Gateway PRD - Terraform Destroy`
+Dispare a Action manual `API Gateway - Terraform Destroy` e informe o input `environment` (`hml` ou `prd`).
 
 ---
 
@@ -283,7 +272,7 @@ aws lambda get-function --function-name mechermes-hml-cognito-token-lambda --que
 **Security Group do Backend:**
 
 ```bash
-aws ec2 describe-security-groups --filters "Name=tag:Name,Values=mechermes-sg" --query "SecurityGroups[0].GroupId" --output text
+aws ec2 describe-security-groups --filters "Name=tag:Name,Values=mechermes-eks-node" --query "SecurityGroups[0].GroupId" --output text
 ```
 
 ### 4. Criar arquivo de variáveis
@@ -324,20 +313,31 @@ terraform output stage_invoke_url
 ```bash
 API_GATEWAY_URL="<sua-url-do-api-gateway>"
 
-# Gerar token
+# Solicitar geração/envio do token para o e-mail do cliente
 TOKEN_RESPONSE=$(curl -X POST "$API_GATEWAY_URL/auth/generate-token" \
   -H "Content-Type: application/json" \
   -d '{"cpf": "51125363061"}')
 
-# Extrair token
-ACCESS_TOKEN=$(echo $TOKEN_RESPONSE | jq -r '.accessToken')
+echo $TOKEN_RESPONSE | jq
 ```
+
+> **Nota:** este endpoint não retorna o JWT no corpo; ele envia o token para o e-mail do cliente.
 
 ### 2. Acessar API Backend
 
 ```bash
-# Fazer requisição autenticada
-curl "$API_GATEWAY_URL/api/v1/ordens-de-servico" \
+# Exemplo: obter token diretamente no Cognito (client_credentials)
+COGNITO_DOMAIN="mechermes-hml.auth.us-east-1.amazoncognito.com"
+CLIENT_ID="<client_id>"
+CLIENT_SECRET="<client_secret>"
+
+ACCESS_TOKEN=$(curl -s -X POST "https://$COGNITO_DOMAIN/oauth2/token" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -u "$CLIENT_ID:$CLIENT_SECRET" \
+  -d "grant_type=client_credentials&scope=mechermes/admin" | jq -r '.access_token')
+
+# Fazer requisição autenticada para a API
+curl "$API_GATEWAY_URL/api/ordens-de-servico" \
   -H "Authorization: Bearer $ACCESS_TOKEN"
 ```
 
@@ -362,7 +362,7 @@ curl "$API_GATEWAY_URL/healthz/ready"
 
 Os logs do API Gateway são armazenados em:
 
-```
+```text
 /aws/apigateway/mechermes-hml
 /aws/apigateway/mechermes-prd
 ```
@@ -418,13 +418,13 @@ O API Gateway atua apenas como um proxy reverso, não interceptando ou modifican
 
 ### Antes (LoadBalancer Service)
 
-```
+```text
 Cliente -> ALB (Internet-facing) -> Service (LoadBalancer) -> Pods
 ```
 
 ### Depois (API Gateway + VPC Link)
 
-```
+```text
 Cliente -> API Gateway -> Cognito (Auth) -> VPC Link -> NLB -> Service (LoadBalancer) -> Pods
 ```
 
@@ -455,7 +455,7 @@ Cliente -> API Gateway -> Cognito (Auth) -> VPC Link -> NLB -> Service (LoadBala
 ## Custos Estimados
 
 | Recurso | Custo Mensal (estimado) |
-|---------|------------------------|
+| --- | --- |
 | API Gateway HTTP API | $1.00/milhão de requisições |
 | VPC Link | ~$22/mês por VPC Link |
 | CloudWatch Logs | ~$0.50/GB ingerido |

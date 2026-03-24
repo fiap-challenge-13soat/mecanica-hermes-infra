@@ -1,4 +1,4 @@
-# API Gateway - Quick Start Guide
+# API Gateway — Guia Rápido
 
 Este guia rápido demonstra como fazer o deploy do API Gateway em minutos usando GitHub Actions.
 
@@ -22,30 +22,29 @@ Antes de iniciar, certifique-se de que os seguintes recursos já foram criados:
 
 No repositório `mecanica-hermes-infra`, configure as secrets no GitHub:
 
-**Settings → Secrets and variables → Actions → New repository secret**
+Caminho no GitHub: `Settings → Secrets and variables → Actions → New repository secret`.
 
 | Secret | Valor |
-|--------|-------|
+| --- | --- |
 | `AWS_ACCESS_KEY_ID` | Sua chave de acesso AWS |
 | `AWS_SECRET_ACCESS_KEY` | Sua chave secreta AWS |
 | `AWS_SESSION_TOKEN` | Seu token de sessão AWS |
 
 ### 2. Configurar Environment Variable
 
-**Settings → Secrets and variables → Actions → Variables**
+Caminho no GitHub: `Settings → Secrets and variables → Actions → Variables`.
 
 | Variable | Valor |
-|----------|-------|
+| --- | --- |
 | `AWS_DEFAULT_REGION` | `us-east-1` |
 
 ### 3. Disparar a Pipeline
 
 1. Acesse a aba **Actions** no GitHub
-2. Selecione o workflow:
-   - **HML**: `API Gateway HML - Terraform Create`
-   - **PRD**: `API Gateway PRD - Terraform Create`
+2. Selecione o workflow **`API Gateway - Terraform Create`**
 3. Clique em **Run workflow**
-4. Aguarde a conclusão (~5-10 minutos)
+4. Informe o ambiente (`hml` ou `prd`)
+5. Aguarde a conclusão (~5-10 minutos)
 
 ### 4. Obter URL do API Gateway
 
@@ -53,7 +52,7 @@ Após o deploy, a URL do API Gateway estará disponível no **Summary** da pipel
 
 Exemplo:
 
-```
+```text
 https://abc123xyz.execute-api.us-east-1.amazonaws.com
 ```
 
@@ -84,19 +83,41 @@ export PRIVATE_SUBNETS=$(aws ec2 describe-subnets \
 
 # Security Group
 export API_BACKEND_SG=$(aws ec2 describe-security-groups \
-  --filters "Name=tag:Name,Values=mechermes-sg" \
+  --filters "Name=tag:Name,Values=mechermes-eks-node" \
   --query "SecurityGroups[0].GroupId" \
   --output text)
 
+# Cognito Pool ID (HML)
+export COGNITO_POOL_ID=$(aws cognito-idp list-user-pools --max-results 60 \
+  --query "UserPools[?Name=='mechermes-hml-userpool'].Id | [0]" \
+  --output text)
+
 # Cognito ARN (HML)
-export COGNITO_ARN=$(aws cognito-idp list-user-pools --max-results 60 \
-  --query "UserPools[?Name=='mechermes-hml-userpool'].Arn | [0]" \
+export COGNITO_ARN=$(aws cognito-idp describe-user-pool \
+  --user-pool-id "$COGNITO_POOL_ID" \
+  --query "UserPool.Arn" \
+  --output text)
+
+# Cognito App Client ID
+export COGNITO_CLIENT_ID=$(aws cognito-idp list-user-pool-clients \
+  --user-pool-id "$COGNITO_POOL_ID" \
+  --query "UserPoolClients[0].ClientId" \
   --output text)
 
 # Lambda ARN (HML)
 export LAMBDA_ARN=$(aws lambda get-function \
   --function-name mechermes-hml-cognito-token-lambda \
   --query "Configuration.FunctionArn" \
+  --output text)
+
+# NLB Listener ARN (porta 80)
+export NLB_ARN=$(aws elbv2 describe-load-balancers \
+  --query "LoadBalancers[?Type=='network' && Scheme=='internal'] | [0].LoadBalancerArn" \
+  --output text)
+
+export NLB_LISTENER_ARN=$(aws elbv2 describe-listeners \
+  --load-balancer-arn "$NLB_ARN" \
+  --query "Listeners[?Port==\`80\`] | [0].ListenerArn" \
   --output text)
 ```
 
@@ -109,11 +130,13 @@ cat > hml.tfvars <<EOF
 project_name          = "mechermes"
 environment           = "hml"
 cognito_user_pool_arn = "$COGNITO_ARN"
+cognito_app_client_id = "$COGNITO_CLIENT_ID"
 lambda_function_arn   = "$LAMBDA_ARN"
 lambda_function_name  = "mechermes-hml-cognito-token-lambda"
 vpc_id                = "$VPC_ID"
 private_subnets       = $PRIVATE_SUBNETS
 api_backend_sg_id     = "$API_BACKEND_SG"
+nlb_listener_arn      = "$NLB_LISTENER_ARN"
 nlb_target_port       = 80
 EOF
 ```
@@ -155,22 +178,31 @@ curl "$API_GATEWAY_URL/health"
 ### 2. Gerar Token de Acesso
 
 ```bash
-# Gerar token
+# Solicitar geração/envio de token para o e-mail do cliente
 TOKEN_RESPONSE=$(curl -X POST "$API_GATEWAY_URL/auth/generate-token" \
   -H "Content-Type: application/json" \
   -d '{"cpf": "51125363061"}')
 
 echo $TOKEN_RESPONSE | jq
-
-# Extrair token
-export ACCESS_TOKEN=$(echo $TOKEN_RESPONSE | jq -r '.accessToken')
 ```
+
+> **Nota:** o endpoint `/auth/generate-token` não retorna o JWT no body. Ele envia o token para o e-mail do cliente.
 
 ### 3. Acessar API Backend com Autenticação
 
 ```bash
+# Exemplo: obter token diretamente no Cognito (client_credentials)
+COGNITO_DOMAIN="mechermes-hml.auth.us-east-1.amazoncognito.com"
+CLIENT_ID="<client_id>"
+CLIENT_SECRET="<client_secret>"
+
+ACCESS_TOKEN=$(curl -s -X POST "https://$COGNITO_DOMAIN/oauth2/token" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -u "$CLIENT_ID:$CLIENT_SECRET" \
+  -d "grant_type=client_credentials&scope=mechermes/admin" | jq -r '.access_token')
+
 # Listar ordens de serviço
-curl "$API_GATEWAY_URL/api/v1/ordens-de-servico" \
+curl "$API_GATEWAY_URL/api/ordens-de-servico" \
   -H "Authorization: Bearer $ACCESS_TOKEN" | jq
 
 # Deve retornar a lista de ordens de serviço
@@ -180,7 +212,7 @@ curl "$API_GATEWAY_URL/api/v1/ordens-de-servico" \
 
 ```bash
 # Tentar acessar sem token
-curl "$API_GATEWAY_URL/api/v1/ordens-de-servico"
+curl "$API_GATEWAY_URL/api/ordens-de-servico"
 
 # Deve retornar: {"message":"Unauthorized"}
 ```
@@ -190,7 +222,7 @@ curl "$API_GATEWAY_URL/api/v1/ordens-de-servico"
 ## Tempo de Deploy Estimado
 
 | Fase | Tempo Estimado |
-|------|---------------|
+| --- | --- |
 | Terraform Init | ~30 segundos |
 | Resource Discovery | ~1 minuto |
 | API Gateway Creation | ~1 minuto |
@@ -207,10 +239,9 @@ curl "$API_GATEWAY_URL/api/v1/ordens-de-servico"
 ### Via GitHub Actions
 
 1. Acesse a aba **Actions**
-2. Selecione o workflow:
-   - **HML**: `API Gateway HML - Terraform Destroy`
-   - **PRD**: `API Gateway PRD - Terraform Destroy`
-3. Clique em **Run workflow**
+2. Selecione o workflow **`API Gateway - Terraform Destroy`**
+3. Informe o ambiente (`hml` ou `prd`)
+4. Clique em **Run workflow**
 
 ### Via CLI
 

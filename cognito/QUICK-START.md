@@ -1,135 +1,94 @@
-# Cognito Quick Start Guide
+# Cognito — Guia Rápido
 
-Quick reference for deploying the Cognito infrastructure.
+Referência rápida para provisionar o módulo de infraestrutura do Cognito.
 
-## Prerequisites
+## Pré-requisitos
 
-1. AWS credentials configured
-2. Existing S3 bucket and DynamoDB table for Terraform state
-3. Information about existing Cognito resources (if importing)
+1. Credenciais AWS configuradas.
+2. Backend remoto do Terraform disponível (S3 + DynamoDB).
+3. Se estiver adotando recursos já existentes, ter os IDs do User Pool/Client/Domain.
 
-## Initial Setup
+## Deploy via GitHub Actions (recomendado)
 
-### 1. Create Variable File
+1. No repositório `mecanica-hermes-infra`, acesse **Actions**.
+2. Execute o workflow **`Cognito - Terraform Create`**.
+3. Informe o `environment` (`hml` ou `prd`).
+4. Aguarde a conclusão e valide os outputs no resumo da execução.
+
+Para destruir:
+
+1. Execute **`Cognito - Terraform Destroy`**.
+2. Informe o `environment` (`hml` ou `prd`).
+
+## Deploy local (alternativo)
+
+### 1. Arquivo de variáveis
 
 ```bash
-# For HML environment
+# HML
 cp hml.tfvars.example hml.tfvars
 
-# Edit hml.tfvars and fill in the values
-```
-
-**Required values**:
-- `cognito_domain_prefix` - Your Cognito domain prefix (must be globally unique)
-- `user_pool_name` - Your User Pool name (optional, will use default if not set)
-
-### 2. Initialize Terraform
-
-```bash
-terraform init -backend-config=backend-hml.hcl
-```
-
-### 3. Import Existing Resources (if applicable)
-
-Get your existing resource IDs:
-
-```bash
-# List User Pools
-aws cognito-idp list-user-pools --max-results 20
-
-# List App Clients
-aws cognito-idp list-user-pool-clients --user-pool-id <USER_POOL_ID>
-```
-
-Use the helper script:
-
-```bash
-bash import-resources.sh hml
-```
-
-Or run import commands manually (see README.md).
-
-### 4. Validate Configuration
-
-```bash
-# Check what Terraform will do
-terraform plan -var-file=hml.tfvars
-
-# Should show NO resource recreation after import
-```
-
-### 5. Apply Configuration
-
-```bash
-terraform apply -var-file=hml.tfvars
-```
-
-## For Production Environment
-
-Replace `hml` with `prd` in all commands above:
-
-```bash
+# PRD
 cp prd.tfvars.example prd.tfvars
+```
+
+### 2. Inicializar Terraform
+
+```bash
+# HML
+terraform init -backend-config=backend-hml.hcl
+
+# PRD
 terraform init -backend-config=backend-prd.hcl
-bash import-resources.sh prd
+```
+
+### 3. Importar recursos existentes (quando aplicável)
+
+Se os recursos Cognito já existirem, faça a importação manual antes do `apply`.
+Use os comandos documentados no [README.md](./README.md) (seção **Importação de Recursos Existentes**).
+
+### 4. Planejar e aplicar
+
+```bash
+# HML
+terraform plan -var-file=hml.tfvars
+terraform apply -var-file=hml.tfvars
+
+# PRD
 terraform plan -var-file=prd.tfvars
 terraform apply -var-file=prd.tfvars
 ```
 
-## Outputs
-
-After apply, get the configuration values:
+## Outputs principais
 
 ```bash
 terraform output
 ```
 
-Key outputs:
-- `cognito_token_endpoint` - OAuth2 token endpoint URL
-- `cognito_client_id` - App client ID (non-sensitive)
-- `cognito_secret_name` - AWS Secrets Manager secret name
+- `cognito_token_endpoint`
+- `cognito_client_id`
+- `cognito_secret_name`
 
-## For Applications
+## Consumo pelas aplicações
 
-### Lambda/API Configuration
+As aplicações consumidoras devem:
 
-Set these environment variables:
+1. Ler o secret do Secrets Manager usando `cognito_secret_name`.
+2. Extrair `client_id` e `client_secret`.
+3. Solicitar token no endpoint OAuth2 (`client_credentials`).
+
+Exemplo:
 
 ```bash
-COGNITO_SECRET_ID=mechermes-hml-cognito-credentials  # From cognito_secret_name output
+COGNITO_SECRET_ID=mechermes-hml-cognito-credentials
 ```
 
-Applications should:
-1. Read the secret from AWS Secrets Manager using the secret name
-2. Extract `client_id` and `client_secret` from the JSON
-3. Use the token endpoint to obtain access tokens
+## Troubleshooting rápido
 
-## Troubleshooting
+- **Terraform quer recriar recursos**: valide se todos os recursos existentes foram importados.
+- **Erro de domínio já existente**: confirme o prefixo de domínio em uso no Cognito.
+- **Acesso negado ao Secrets Manager**: ajuste a policy IAM para `secretsmanager:GetSecretValue`.
 
-**Problem**: Terraform wants to destroy and recreate resources
+## Referência
 
-**Solution**: Ensure you've imported all existing resources correctly
-
-**Problem**: Domain already exists error
-
-**Solution**: Use the exact same domain prefix from your existing Cognito setup
-
-**Problem**: Access denied to Secrets Manager
-
-**Solution**: Grant IAM permissions to the consuming application:
-```json
-{
-  "Effect": "Allow",
-  "Action": ["secretsmanager:GetSecretValue"],
-  "Resource": "arn:aws:secretsmanager:us-east-1:*:secret:mechermes-*-cognito-credentials-*"
-}
-```
-
-## Next Steps
-
-1. Update Lambda/API to use the new secret from Secrets Manager
-2. Test authentication flow in HML
-3. Repeat process for PRD environment
-4. Remove any hardcoded credentials from applications
-
-For detailed documentation, see [README.md](./README.md)
+Para detalhes completos, consulte o [README.md](./README.md).
