@@ -48,81 +48,106 @@ jobs:
         env:
           TF_VAR_aws_account_id: ${{ secrets.AWS_ACCOUNT_ID }}
 
-      # Cleanup orphan Lambda ENIs before destroying VPC resources
-      - name: Cleanup Orphan Lambda ENIs
+      # Cleanup orphan ENIs and network resources before destroying VPC
+      - name: Cleanup Orphan Network Resources
         run: |
-          echo "🔍 Checking for orphan Lambda ENIs..."
+          echo "🔍 Checking for orphan network resources..."
           
           # Get VPC ID from Terraform state
           VPC_ID=$(terraform show -json | jq -r '.values.root_module.resources[] | select(.type == "aws_vpc") | .values.id' 2>/dev/null || echo "")
           
           if [ -z "$VPC_ID" ]; then
-            echo "⚠️  VPC not found in state, skipping ENI cleanup"
+            echo "⚠️  VPC not found in state, skipping cleanup"
             exit 0
           fi
           
           echo "📍 VPC ID: $VPC_ID"
           
-          # Find Lambda ENIs in the VPC
-          LAMBDA_ENIS=$(aws ec2 describe-network-interfaces \
+          # Step 1: Find and cleanup ALL ENIs in the VPC (not just Lambda)
+          echo "🔍 Finding all ENIs in VPC..."
+          ALL_ENIS=$(aws ec2 describe-network-interfaces \
             --filters "Name=vpc-id,Values=$VPC_ID" \
-                      "Name=description,Values=AWS Lambda VPC ENI*" \
-            --query 'NetworkInterfaces[*].NetworkInterfaceId' \
+            --query 'NetworkInterfaces[*].[NetworkInterfaceId,Description,Status]' \
             --output text 2>/dev/null || echo "")
           
-          if [ -z "$LAMBDA_ENIS" ]; then
-            echo "✅ No orphan Lambda ENIs found"
-            exit 0
+          if [ -n "$ALL_ENIS" ]; then
+            ENI_COUNT=$(echo "$ALL_ENIS" | wc -l)
+            echo "⚠️  Found $ENI_COUNT ENI(s) in VPC"
+            echo "$ALL_ENIS"
+            
+            # Wait up to 10 minutes for AWS to clean them automatically
+            TIMEOUT=600
+            ELAPSED=0
+            INTERVAL=30
+            
+            while [ $ELAPSED -lt $TIMEOUT ]; do
+              REMAINING=$(aws ec2 describe-network-interfaces \
+                --filters "Name=vpc-id,Values=$VPC_ID" \
+                --query 'NetworkInterfaces[*].NetworkInterfaceId' \
+                --output text 2>/dev/null || echo "")
+              
+              if [ -z "$REMAINING" ]; then
+                echo "✅ All ENIs cleaned up!"
+                break
+              fi
+              
+              REMAINING_COUNT=$(echo $REMAINING | wc -w)
+              echo "⏳ Waiting for cleanup... ($ELAPSED/$TIMEOUT seconds) - $REMAINING_COUNT ENI(s) remaining"
+              
+              sleep $INTERVAL
+              ELAPSED=$((ELAPSED + INTERVAL))
+            done
+            
+            # After timeout, try to delete available ENIs manually
+            if [ $ELAPSED -ge $TIMEOUT ]; then
+              echo "⚠️  Timeout reached. Attempting manual deletion..."
+              
+              ENI_IDS=$(echo "$ALL_ENIS" | awk '{print $1}')
+              for ENI in $ENI_IDS; do
+                STATUS=$(aws ec2 describe-network-interfaces \
+                  --network-interface-ids $ENI \
+                  --query 'NetworkInterfaces[0].Status' \
+                  --output text 2>/dev/null || echo "not-found")
+                
+                if [ "$STATUS" = "available" ]; then
+                  echo "🗑️  Deleting ENI $ENI..."
+                  aws ec2 delete-network-interface --network-interface-id $ENI 2>/dev/null && \
+                    echo "✅ Deleted" || echo "⚠️  Failed"
+                elif [ "$STATUS" = "not-found" ]; then
+                  echo "✅ ENI $ENI already deleted"
+                else
+                  echo "⏭️  ENI $ENI still $STATUS - skipping"
+                fi
+              done
+            fi
+          else
+            echo "✅ No ENIs found in VPC"
           fi
           
-          ENI_COUNT=$(echo $LAMBDA_ENIS | wc -w)
-          echo "⚠️  Found $ENI_COUNT orphan Lambda ENI(s)"
+          # Step 2: Detach Internet Gateway if exists
+          echo "🔍 Checking for Internet Gateway..."
+          IGW_ID=$(aws ec2 describe-internet-gateways \
+            --filters "Name=attachment.vpc-id,Values=$VPC_ID" \
+            --query 'InternetGateways[0].InternetGatewayId' \
+            --output text 2>/dev/null || echo "")
           
-          # Wait up to 10 minutes for AWS to clean them automatically
-          TIMEOUT=600
-          ELAPSED=0
-          INTERVAL=30
-          
-          while [ $ELAPSED -lt $TIMEOUT ]; do
-            REMAINING=$(aws ec2 describe-network-interfaces \
-              --network-interface-ids $LAMBDA_ENIS \
-              --query 'NetworkInterfaces[*].NetworkInterfaceId' \
-              --output text 2>/dev/null || echo "")
+          if [ -n "$IGW_ID" ] && [ "$IGW_ID" != "None" ]; then
+            echo "📍 Found IGW: $IGW_ID"
+            echo "🔌 Detaching Internet Gateway from VPC..."
+            aws ec2 detach-internet-gateway --internet-gateway-id $IGW_ID --vpc-id $VPC_ID 2>/dev/null && \
+              echo "✅ IGW detached" || echo "⚠️  Failed to detach IGW (may already be detached)"
             
-            if [ -z "$REMAINING" ]; then
-              echo "✅ All ENIs cleaned up automatically by AWS!"
-              exit 0
-            fi
+            # Wait a bit for detachment to complete
+            sleep 10
             
-            REMAINING_COUNT=$(echo $REMAINING | wc -w)
-            echo "⏳ Waiting for automatic cleanup... ($ELAPSED/$TIMEOUT seconds) - $REMAINING_COUNT ENI(s) remaining"
-            
-            sleep $INTERVAL
-            ELAPSED=$((ELAPSED + INTERVAL))
-          done
+            echo "🗑️  Deleting Internet Gateway..."
+            aws ec2 delete-internet-gateway --internet-gateway-id $IGW_ID 2>/dev/null && \
+              echo "✅ IGW deleted" || echo "⚠️  Failed to delete IGW (will be handled by Terraform)"
+          else
+            echo "✅ No Internet Gateway attached"
+          fi
           
-          # After timeout, try to delete available ENIs manually
-          echo "⚠️  Timeout reached. Attempting manual deletion of available ENIs..."
-          
-          for ENI in $LAMBDA_ENIS; do
-            STATUS=$(aws ec2 describe-network-interfaces \
-              --network-interface-ids $ENI \
-              --query 'NetworkInterfaces[0].Status' \
-              --output text 2>/dev/null || echo "not-found")
-            
-            if [ "$STATUS" = "available" ]; then
-              echo "🗑️  Deleting ENI $ENI (status: available)..."
-              aws ec2 delete-network-interface --network-interface-id $ENI 2>/dev/null && \
-                echo "✅ ENI $ENI deleted" || \
-                echo "⚠️  Failed to delete ENI $ENI"
-            elif [ "$STATUS" = "not-found" ]; then
-              echo "✅ ENI $ENI already deleted"
-            else
-              echo "⏭️  ENI $ENI still in use (status: $STATUS) - skipping"
-            fi
-          done
-          
-          echo "✅ ENI cleanup completed"
+          echo "✅ Network cleanup completed"
         continue-on-error: true
 
       # Destroy infrastructure according to Terraform configuration files
