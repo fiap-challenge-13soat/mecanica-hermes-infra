@@ -12,7 +12,8 @@ resource "aws_lambda_permission" "api_gateway" {
   action        = "lambda:InvokeFunction"
   function_name = var.lambda_function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.main.execution_arn}/*/*"
+  # Allow invocation from the specific route: POST /auth/generate-token
+  source_arn = "${aws_apigatewayv2_api.main.execution_arn}/*/*/auth/generate-token"
 }
 
 resource "aws_apigatewayv2_integration" "api_backend" {

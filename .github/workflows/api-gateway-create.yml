@@ -91,41 +91,76 @@ jobs:
             --output text)
           echo "✓ Lambda ARN: $LAMBDA_ARN"
 
-          echo "Discovering NLB Listener ARN..."
-          # First, list all NLBs in the VPC for debugging
+          echo "Discovering NLB Listener ARN for environment: ${{ inputs.environment }}..."
+          
+          # List all NLBs in the VPC for debugging
           echo "Available NLBs in VPC:"
           aws elbv2 describe-load-balancers \
             --query "LoadBalancers[?VpcId=='${VPC_ID}' && Type=='network'].[LoadBalancerName,Scheme,LoadBalancerArn]" \
             --output table
           
-          # Try to find internal NLB first, then fall back to any network LB
-          NLB_ARN=$(aws elbv2 describe-load-balancers \
-            --query "LoadBalancers[?VpcId=='${VPC_ID}' && Type=='network' && Scheme=='internal'] | [0].LoadBalancerArn" \
+          # Find NLB by looking for the Kubernetes service for the specific environment
+          echo "Looking for NLB serving mecanica-hermes-api in namespace mecanica-hermes-${{ inputs.environment }}..."
+          
+          # Get all NLBs in the VPC
+          NLB_ARNS=$(aws elbv2 describe-load-balancers \
+            --query "LoadBalancers[?VpcId=='${VPC_ID}' && Type=='network'].LoadBalancerArn" \
             --output text)
           
-          if [ "$NLB_ARN" == "None" ] || [ -z "$NLB_ARN" ]; then
-            echo "⚠ No internal NLB found, trying any network load balancer..."
-            NLB_ARN=$(aws elbv2 describe-load-balancers \
-              --query "LoadBalancers[?VpcId=='${VPC_ID}' && Type=='network'] | [0].LoadBalancerArn" \
+          NLB_LISTENER_ARN=""
+          for NLB_ARN in $NLB_ARNS; do
+            echo "Checking NLB: $NLB_ARN"
+            
+            # Get target groups for this NLB
+            TARGET_GROUPS=$(aws elbv2 describe-target-groups \
+              --load-balancer-arn "$NLB_ARN" \
+              --query "TargetGroups[*].[TargetGroupName,Port]" \
               --output text)
-          fi
+            
+            echo "  Target groups: $TARGET_GROUPS"
+            
+            # Check if this NLB has a target group matching the environment
+            # HML uses port 32430, PRD uses port 32040 (these are NodePort assignments from K8s)
+            if echo "$TARGET_GROUPS" | grep -q "mecanica"; then
+              echo "  ✓ Found NLB for mecanica-hermes-api"
+              
+              # Get listener ARN for port 80
+              LISTENER_ARN=$(aws elbv2 describe-listeners \
+                --load-balancer-arn "$NLB_ARN" \
+                --query "Listeners[?Port==\`80\`] | [0].ListenerArn" \
+                --output text)
+              
+              if [ "$LISTENER_ARN" != "None" ] && [ -n "$LISTENER_ARN" ]; then
+                # Verify this is the correct environment by checking target health
+                TARGET_GROUP_ARN=$(aws elbv2 describe-target-groups \
+                  --load-balancer-arn "$NLB_ARN" \
+                  --query "TargetGroups[0].TargetGroupArn" \
+                  --output text)
+                
+                TARGET_PORT=$(aws elbv2 describe-target-groups \
+                  --load-balancer-arn "$NLB_ARN" \
+                  --query "TargetGroups[0].Port" \
+                  --output text)
+                
+                echo "  Target Port: $TARGET_PORT"
+                
+                # Assign based on known ports: HML=32430, PRD=32040
+                if [ "${{ inputs.environment }}" == "hml" ] && [ "$TARGET_PORT" == "32430" ]; then
+                  NLB_LISTENER_ARN="$LISTENER_ARN"
+                  echo "  ✓ Matched HML environment (port 32430)"
+                  break
+                elif [ "${{ inputs.environment }}" == "prd" ] && [ "$TARGET_PORT" == "32040" ]; then
+                  NLB_LISTENER_ARN="$LISTENER_ARN"
+                  echo "  ✓ Matched PRD environment (port 32040)"
+                  break
+                fi
+              fi
+            fi
+          done
           
-          if [ "$NLB_ARN" == "None" ] || [ -z "$NLB_ARN" ]; then
-            echo "❌ ERROR: No Network Load Balancer found in VPC ${VPC_ID}"
-            exit 1
-          fi
-          
-          echo "✓ NLB ARN: $NLB_ARN"
-          
-          NLB_LISTENER_ARN=$(aws elbv2 describe-listeners \
-            --load-balancer-arn "$NLB_ARN" \
-            --query "Listeners[?Port==\`80\`] | [0].ListenerArn" \
-            --output text)
-          
-          if [ "$NLB_LISTENER_ARN" == "None" ] || [ -z "$NLB_LISTENER_ARN" ]; then
-            echo "❌ ERROR: No listener on port 80 found for NLB"
-            echo "Available listeners:"
-            aws elbv2 describe-listeners --load-balancer-arn "$NLB_ARN" --query "Listeners[*].[Port,Protocol]" --output table
+          if [ -z "$NLB_LISTENER_ARN" ] || [ "$NLB_LISTENER_ARN" == "None" ]; then
+            echo "❌ ERROR: No Network Load Balancer found for environment ${{ inputs.environment }}"
+            echo "Expected port: HML=32430, PRD=32040"
             exit 1
           fi
           
@@ -138,7 +173,7 @@ jobs:
           cognito_user_pool_arn = "${COGNITO_ARN}"
           cognito_app_client_id = "${COGNITO_CLIENT_ID}"
           lambda_function_arn   = "${LAMBDA_ARN}"
-          lambda_function_name  = "mechermes-hml-cognito-token-lambda"
+          lambda_function_name  = "mechermes-${{ inputs.environment }}-cognito-token-lambda"
           vpc_id                = "${VPC_ID}"
           private_subnets       = ${PRIVATE_SUBNETS_JSON}
           api_backend_sg_id     = "${API_BACKEND_SG}"
