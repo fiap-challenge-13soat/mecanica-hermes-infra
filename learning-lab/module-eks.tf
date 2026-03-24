@@ -57,8 +57,8 @@ module "eks" {
       create_iam_role = false
       iam_role_arn    = local.lab_role_arn
       min_size        = 2
-      desired_size    = 2
-      max_size        = 4
+      desired_size    = 4
+      max_size        = 6
       instance_types  = ["t3.small"]
     }
   }

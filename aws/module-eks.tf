@@ -28,8 +28,8 @@ module "eks" {
     default = {
       create_iam_role = true
       min_size        = 2
-      desired_size    = 2
-      max_size        = 4
+      desired_size    = 4
+      max_size        = 6
       instance_types  = ["t3.small"]
     }
   }
