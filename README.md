@@ -1,6 +1,7 @@
-# Mecânica Hermes - Infra Kubernetes
+# Mecânica Hermes - Infraestrutura AWS
 
-Este repositório é responsável por criar o cluster para realizar o deploy do projeto.
+Este repositório centraliza o provisionamento da infraestrutura AWS da plataforma Mecânica Hermes.
+Os módulos Terraform deste projeto cobrem VPC/EKS, Cognito e API Gateway.
 
 ---
 
@@ -32,13 +33,14 @@ Este repositório é responsável por criar o cluster para realizar o deploy do 
 
 ## Arquitetura dos Projetos de Infra
 
-Nossa infraestrutura para disponibilizar um ambiente completo e funcional é composta por cinco passos sequenciais que são executados em diferentes repositórios:
+Nossa infraestrutura para disponibilizar um ambiente completo e funcional é composta por seis passos sequenciais executados em diferentes repositórios/módulos:
 
 1. Mecânica Hermes - Infra Kubernetes (Este projeto - módulo `aws/`)
 2. Mecânica Hermes - Infra Cognito (Este projeto - módulo `cognito/`)
 3. [Mecânica Hermes - Infra Database](https://github.com/fiap-challenge-13soat/mecanica-hermes-db)
 4. [Mecânica Hermes - Deploy Kubernetes](https://github.com/fiap-challenge-13soat/mecanica-hermes-k8s)
-5. Mecânica Hermes - API Gateway (Este projeto - módulo `api-gateway/`)
+5. [Mecânica Hermes - Cognito Token Lambda](https://github.com/fiap-challenge-13soat/mecanica-hermes-lambda)
+6. Mecânica Hermes - API Gateway (Este projeto - módulo `api-gateway/`)
 
 ---
 
@@ -65,13 +67,16 @@ flowchart
    RDS["RDS PostgreSQL (privado)"]
   end
 
-  subgraph Step4["Conta Externa: Terraform State & Lock"]
+  subgraph State["Conta Externa: Terraform State & Lock"]
    S3["S3: tfstate"]
    DDB["DynamoDB: tf locks"]
   end
 
-  subgraph Step5["Repo: Deploy Kubernetes"]
+  subgraph Step4["Repo: Deploy Kubernetes"]
    Apps["Apps publicados no Kubernetes"]
+  end
+
+  subgraph Step5["Repo: Cognito Token Lambda"]
    Lambda["Lambda Functions"]
   end
 
@@ -123,84 +128,40 @@ flowchart
 
 ## Execução pela Pipeline
 
-**Configure as Secrets abaixo no repositório.**
+### Workflows disponíveis
 
----
+| Fluxo | Workflow |
+| --- | --- |
+| Criar infraestrutura base (learning lab) | `Learning Lab AWS - Terraform Create` |
+| Destruir infraestrutura base (learning lab) | `Learning Lab AWS - Terraform Destroy` |
+| Criar infraestrutura base (AWS admin) | `AWS - Terraform Create` |
+| Destruir infraestrutura base (AWS admin) | `AWS - Terraform Destroy` |
+| Criar/atualizar Cognito | `Cognito - Terraform Create` |
+| Destruir Cognito | `Cognito - Terraform Destroy` |
+| Criar/atualizar API Gateway | `API Gateway - Terraform Create` |
+| Destruir API Gateway | `API Gateway - Terraform Destroy` |
 
-| Variável              | Descrição                                                              |
-| --------------------- | ---------------------------------------------------------------------- |
-| AWS_ACCESS_KEY_ID     | Chave de acesso da AWS.                                                |
-| AWS_SECRET_ACCESS_KEY | Chave secreta da AWS.                                                  |
-| AWS_SESSION_TOKEN     | Token de sessão da AWS.                                                |
-| AWS_DEFAULT_REGION    | Região padrão da AWS (configurada como variável de ambiente).          |
-| AWS_ACCOUNT_ID        | ID numérico da conta AWS, usado para montar os ARNs das roles do EKS.  |
+### Secrets e variáveis necessárias
 
-**Secrets adicionais para Cognito (configurar nos environments `cognito-hml` e `cognito-prd`):**
+| Tipo | Nome | Uso |
+| --- | --- | --- |
+| Secret | `AWS_ACCESS_KEY_ID` | Autenticação AWS nos workflows |
+| Secret | `AWS_SECRET_ACCESS_KEY` | Autenticação AWS nos workflows |
+| Secret | `AWS_SESSION_TOKEN` | Sessão temporária (quando aplicável) |
+| Secret | `AWS_ACCOUNT_ID` | Exigido nos workflows de `learning-lab` |
+| Variável | `AWS_DEFAULT_REGION` | Região alvo da AWS |
 
-| Variável (HML)                     | Variável (PRD)                     | Descrição                                    |
-| ---------------------------------- | ---------------------------------- | -------------------------------------------- |
-| HML_USER_POOL_ID                   | PRD_USER_POOL_ID                   | ID do User Pool do Cognito                   |
-| HML_RESOURCE_SERVER_IDENTIFIER     | PRD_RESOURCE_SERVER_IDENTIFIER     | Identificador do Resource Server             |
-| HML_CLIENT_ID                      | PRD_CLIENT_ID                      | ID do App Client do Cognito                  |
-| HML_DOMAIN_PREFIX                  | PRD_DOMAIN_PREFIX                  | Prefixo do domínio Cognito                   |
+### Ordem recomendada de execução
 
----
+1. `Learning Lab AWS - Terraform Create` **ou** `AWS - Terraform Create`
+2. `Cognito - Terraform Create` (input `environment`: `hml` ou `prd`)
+3. Provisionamento do banco no repositório `mecanica-hermes-db`
+4. Deploy da API no repositório `mecanica-hermes-k8s`
+5. Deploy da Lambda no repositório `mecanica-hermes-lambda`
+6. `API Gateway - Terraform Create`
 
-Para gerar nova Key e Token use o comando:
+> **Atenção:** para destruir o ambiente, faça o caminho inverso. O deploy do Kubernetes deve ser destruído antes da infraestrutura base para evitar recursos órfãos (NLB, Security Groups e VPC Links).
 
-```bash
-aws sts get-session-token
-```
-
----
-
-### Create Environment
-
----
-Dispare a Action Trigger manual de acordo com o seu ambiente:
-
-**Infraestrutura Base (EKS/VPC):**
-
-- **Learning Lab:** `Learning Lab - Terraform Create`.
-- **AWS com Usuário Admin:** `AWS Admin - Terraform Create`.
-
-**Cognito (Autenticação):**
-
-- **HML:** `Cognito HML - Terraform Create`.
-- **PRD:** `Cognito PRD - Terraform Create`.
-
-**API Gateway (Ponto de Entrada Unificado):**
-
-- **HML:** `API Gateway HML - Terraform Create`.
-- **PRD:** `API Gateway PRD - Terraform Create`.
-
----
-
-### Destroy Environment
-
----
-Dispare a Action Trigger manual de acordo com o seu ambiente:
-
-**API Gateway (Ponto de Entrada Unificado):**
-
-- **HML:** `API Gateway HML - Terraform Destroy`.
-- **PRD:** `API Gateway PRD - Terraform Destroy`.
-
-**Cognito (Autenticação):**
-
-- **HML:** `Cognito HML - Terraform Destroy`.
-- **PRD:** `Cognito PRD - Terraform Destroy`.
-
-**Infraestrutura Base (EKS/VPC):**
-
-- **Learning Lab:** `Learning Lab - Terraform Destroy`.
-- **AWS com Usuário Admin:** `AWS Admin - Terraform Destroy`.
-
----
-
-> **Atenção!**
->
-> Caso tenha sido realizado o deploy do ambiente K8s, então será necessário realizar o destroy K8s antes de destruir o ambiente via Terraform, caso contrário, alguns recursos de Load Balance e Security Groups impedirão a destruição via Terraform.
 ---
 
 ## Execução Local
@@ -278,3 +239,14 @@ Confira o [README.md](./api-gateway/README.md) com maiores detalhes para este de
 - CloudWatch Logs para observabilidade
 
 **Quick Start:** Veja o [QUICK-START.md](./api-gateway/QUICK-START.md) para deploy rápido em minutos.
+
+---
+
+## Documentação rica
+
+- [Arquitetura do repositório](./docs/Arquitetura.md)
+- [RFCs](./docs/RFCs.md)
+- [ADRs](./docs/ADRs.md)
+- [Guia do módulo AWS](./aws/README.md)
+- [Guia do módulo Cognito](./cognito/README.md)
+- [Guia do módulo API Gateway](./api-gateway/README.md)
