@@ -1,4 +1,4 @@
-name: Learning Lab AWS - Terraform Destroy
+name: Learner Lab AWS - Terraform Destroy
 
 on:
   workflow_dispatch:
@@ -15,7 +15,7 @@ jobs:
     # Use the Bash shell regardless whether the GitHub Actions runner is ubuntu-latest, macos-latest, or windows-latest
     defaults:
       run:
-        working-directory: ./learning-lab
+        working-directory: ./learner-lab
         shell: bash
 
     steps:

@@ -1,7 +1,16 @@
-name: Learning Lab AWS - Terraform Create
+name: Database - Terraform Create
 
 on:
   workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        default: "hml"
+        type: choice
+        options:
+          - hml
+          - prd
 
 permissions:
   contents: read
@@ -11,11 +20,13 @@ jobs:
     name: "Terraform"
     runs-on: ubuntu-latest
     environment: aws
+    env:
+      ENVIRONMENT: ${{ inputs.environment || vars.environment }}
 
     # Use the Bash shell regardless whether the GitHub Actions runner is ubuntu-latest, macos-latest, or windows-latest
     defaults:
       run:
-        working-directory: ./learning-lab
+        working-directory: ./db
         shell: bash
 
     steps:
@@ -38,7 +49,7 @@ jobs:
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: ${{ vars.AWS_DEFAULT_REGION }}
 
-      # S3 bucket for Terraform state files if it doesn't exist
+      # Create S3 bucket for Terraform state files if it doesn't exist
       - name: Create Bucket tfstate
         run: |
           if aws s3api head-bucket --bucket mechermes-tf-state-aws 2>/dev/null; then
@@ -62,7 +73,7 @@ jobs:
 
       # Initialize a new or existing Terraform working directory by creating initial files, loading any remote state, downloading modules, etc.
       - name: Terraform Init
-        run: terraform init
+        run: terraform init "-backend-config=backend-${{ env.ENVIRONMENT }}.hcl"
 
       # Checks that all Terraform configuration files adhere to a canonical format
       - name: Terraform Format
@@ -70,12 +81,8 @@ jobs:
 
       # Generates an execution plan for Terraform
       - name: Terraform Plan
-        run: terraform plan -input=false
-        env:
-          TF_VAR_aws_account_id: ${{ secrets.AWS_ACCOUNT_ID }}
+        run: terraform plan -input=false -var="environment=${{ env.ENVIRONMENT }}"
 
       # Build or change infrastructure according to Terraform configuration files
       - name: Terraform Apply
-        run: terraform apply -auto-approve -input=false
-        env:
-          TF_VAR_aws_account_id: ${{ secrets.AWS_ACCOUNT_ID }}
+        run: terraform apply -auto-approve -input=false -var="environment=${{ env.ENVIRONMENT }}"

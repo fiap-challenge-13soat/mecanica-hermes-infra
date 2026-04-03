@@ -1,61 +1,54 @@
-# Mecânica Hermes - API Gateway Infrastructure
+# Módulo `api-gateway/` — Ponto de Entrada Unificado (API Gateway)
 
-Este módulo Terraform gerencia o AWS API Gateway que atua como ponto de entrada unificado para a aplicação Mecânica Hermes, integrando autenticação via Cognito, função Lambda para geração de tokens e o backend da API no EKS.
-
----
-
-## Tecnologias Utilizadas
+Este módulo Terraform gerencia o AWS API Gateway HTTP que atua como ponto de entrada unificado para a aplicação Mecânica Hermes, integrando autenticação via Cognito, função Lambda para geração de tokens e o backend da API no EKS.
 
 ![Terraform](https://img.shields.io/badge/Terraform-7B42BC?logo=terraform&logoColor=white)
 ![AWS](https://img.shields.io/badge/AWS-Cloud-232F3E?logo=amazonaws&logoColor=white)
 ![Amazon API Gateway](https://img.shields.io/badge/Amazon%20API%20Gateway-FF4F8B?logo=amazonaws&logoColor=white)
-![AWS Lambda](https://img.shields.io/badge/AWS%20Lambda-FF9900?logo=awslambda&logoColor=white)
-![Amazon Cognito](https://img.shields.io/badge/Amazon%20Cognito-DD344C?logo=amazonaws&logoColor=white)
 
-- **Terraform** para provisionamento de infraestrutura como código (IaC)
-- **AWS API Gateway (HTTP API)** como ponto de entrada unificado
-- **AWS Cognito** para autenticação JWT
-- **VPC Link** para integração privada com o backend EKS
-- **Lambda Integration** para endpoint de geração de tokens
-- **CloudWatch Logs** para observabilidade
+## Recursos provisionados
 
----
+- **HTTP API** com suporte a CORS e logs no CloudWatch
+- **Cognito Authorizer** — autenticação JWT usando Cognito User Pool
+- **Lambda Integration** — `POST /auth/generate-token` (público)
+- **VPC Link Integration** — proxy reverso para o backend EKS via NLB (JWT obrigatório)
+- **Security Group** para comunicação com o NLB nas subnets privadas
 
 ## Arquitetura
 
 ```mermaid
 flowchart TB
     Client["Cliente/App"] -->|HTTPS| APIG["API Gateway"]
-    
+
     subgraph Auth["Autenticação"]
         Cognito["Cognito User Pool"]
         APIG -->|Valida JWT| Cognito
     end
-    
+
     subgraph Lambda["Lambda Function"]
         LambdaFunc["Token Generator<br/>POST /auth/generate-token"]
     end
-    
+
     subgraph VPC["AWS VPC"]
         VPCLink["VPC Link"]
         NLB["Network Load Balancer<br/>(K8s Service)"]
-        
+
         subgraph EKS["EKS Cluster"]
             API["API Backend<br/>ClusterIP Service"]
             Pods["API Pods"]
         end
-        
+
         VPCLink --> NLB
         NLB --> API
         API --> Pods
     end
-    
+
     APIG -->|"POST /auth/generate-token<br/>(sem autenticação)"| LambdaFunc
     APIG -->|"ANY /{proxy+}<br/>(com JWT)"| VPCLink
     APIG -->|"/health, /healthz/*<br/>(sem autenticação)"| VPCLink
-    
+
     LambdaFunc -->|Gera token| Cognito
-    
+
     style APIG fill:#ff4f8b
     style Cognito fill:#dd344c
     style LambdaFunc fill:#ff9900
@@ -63,415 +56,82 @@ flowchart TB
     style API fill:#326ce5
 ```
 
----
+## Rotas configuradas
 
-## Recursos Gerenciados
-
-### API Gateway
-
-- **HTTP API**: API Gateway com suporte a CORS
-- **Cognito Authorizer**: Autenticador JWT usando Cognito User Pool
-- **CloudWatch Logs**: Logs de acesso e execução
-
-### Integrações
-
-#### 1. Lambda Integration
-
-- **Endpoint**: `POST /auth/generate-token`
-- **Autenticação**: Nenhuma (público)
-- **Função**: Gera tokens de acesso via Cognito para clientes autenticados
-
-#### 2. VPC Link Integration
-
-- **Endpoint**: `ANY /{proxy+}`
-- **Autenticação**: JWT obrigatório
-- **Função**: Proxy reverso para o backend da API no EKS
-- **Health Checks**: `/health`, `/healthz/live`, `/healthz/ready` (sem autenticação)
-
-### VPC Link
-
-- **Security Group**: Permite comunicação com o NLB
-- **Subnets**: Subnets privadas da VPC
-
----
-
-## Estrutura de Diretórios
-
-```text
-api-gateway/
-├── modules/
-│   └── api-gateway/
-│       ├── api_gateway.tf        # API Gateway e Stage
-│       ├── authorizer.tf         # Cognito Authorizer
-│       ├── data.tf               # Data sources
-│       ├── integrations.tf       # Lambda e VPC Link integrations
-│       ├── outputs.tf            # Outputs do módulo
-│       ├── routes.tf             # Rotas do API Gateway
-│       ├── variables.tf          # Variáveis do módulo
-│       └── vpc_link.tf           # VPC Link e Security Group
-├── backend-hml.hcl               # Configuração de backend para HML
-├── backend-prd.hcl               # Configuração de backend para PRD
-├── backend.tf                    # Definição do backend S3
-├── hml.tfvars                    # Variáveis para HML
-├── hml.tfvars.example            # Exemplo de variáveis para HML
-├── main.tf                       # Invocação do módulo
-├── outputs.tf                    # Outputs raiz
-├── prd.tfvars                    # Variáveis para PRD
-├── prd.tfvars.example            # Exemplo de variáveis para PRD
-├── provider.tf                   # Provider AWS
-└── variables.tf                  # Variáveis raiz
-```
-
----
-
-## Fluxo de Requisições
-
-### 1. Geração de Token (Sem Autenticação)
-
-```text
-Cliente -> API Gateway -> Lambda -> Cognito
-       <- Confirmação de envio por e-mail <-
-```
-
-### 2. Acesso à API (Com Autenticação JWT)
-
-```text
-Cliente -> API Gateway -> Valida JWT (Cognito) -> VPC Link -> NLB -> API Backend
-       <- Resposta <--------<---------<---------<------<-----
-```
-
-### 3. Health Checks (Sem Autenticação)
-
-```text
-Cliente/Monitor -> API Gateway -> VPC Link -> NLB -> API Backend -> /health
-               <- Status <------<---------<------<------------<-
-```
-
----
-
-## Rotas Configuradas
-
-| Rota | Método | Autenticação | Destino | Descrição |
-| --- | --- | --- | --- | --- |
-| `/auth/generate-token` | POST | ❌ Não | Lambda | Solicita geração e envio do token por e-mail |
-| `/{proxy+}` | ANY | ✅ JWT | API Backend | Todas as rotas da API |
-| `/health` | GET | ❌ Não | API Backend | Health check |
-| `/healthz/live` | GET | ❌ Não | API Backend | Liveness probe |
-| `/healthz/ready` | GET | ❌ Não | API Backend | Readiness probe |
-
----
+| Rota | Método | Autenticação | Destino |
+| --- | --- | --- | --- |
+| `/auth/generate-token` | POST | Não | Lambda |
+| `/{proxy+}` | ANY | JWT | API Backend |
+| `/health` | GET | Não | API Backend |
+| `/healthz/live` | GET | Não | API Backend |
+| `/healthz/ready` | GET | Não | API Backend |
 
 ## Pré-requisitos
 
-Antes de executar este módulo, certifique-se de que os seguintes recursos já existem:
+Antes de executar este módulo, os seguintes recursos devem existir:
 
-1. **VPC e Subnets** (criados pelo módulo `aws/`)
-2. **EKS Cluster** (criado pelo módulo `aws/`)
-3. **Cognito User Pool** (criado pelo módulo `cognito/`)
-4. **Lambda Function** (criada pelo repositório `mecanica-hermes-lambda`)
-5. **API Backend** deployado no K8s com serviço NLB (criado pelo repositório `mecanica-hermes-k8s`)
+1. VPC e Subnets (via `aws/` ou `learner-lab/`)
+2. EKS Cluster (via `aws/` ou `learner-lab/`)
+3. Cognito User Pool (via `cognito/`)
+4. Lambda Function (via repositório `mecanica-hermes-lambda`)
+5. API Backend deployado no K8s com serviço NLB (via repositório `mecanica-hermes-k8s`)
 
----
+> O módulo utiliza **data sources** para descobrir automaticamente VPC, subnets, EKS e NLB. Você só precisa fornecer o ARN do Cognito User Pool e da Lambda.
 
-## Descoberta Automática de Recursos
+## Variáveis necessárias
 
-O módulo utiliza **data sources** para descobrir automaticamente:
+| Variável | Descrição | Default |
+| --- | --- | --- |
+| `project_name` | Nome base para todos os recursos | `mechermes` |
+| `environment` | Nome do ambiente (`hml` ou `prd`) | `hml` |
 
-- ✅ VPC ID
-- ✅ Subnets privadas
-- ✅ EKS Cluster
-- ✅ Network Load Balancer (criado pelo serviço K8s)
+> Os arquivos `hml.tfvars` e `prd.tfvars` já estão configurados com os valores padrão.
 
-**Você só precisa fornecer:**
+## Secrets (GitHub Actions)
 
-- ARN do Cognito User Pool
-- ARN e nome da função Lambda
-
----
-
-## Execução pela Pipeline
-
-### Secrets Necessárias
-
-Configure as seguintes secrets no GitHub (environment `aws`):
-
-| Variável | Descrição |
+| Secret | Descrição |
 | --- | --- |
-| `AWS_ACCESS_KEY_ID` | Chave de acesso da AWS |
-| `AWS_SECRET_ACCESS_KEY` | Chave secreta da AWS |
-| `AWS_SESSION_TOKEN` | Token de sessão da AWS |
+| `AWS_ACCESS_KEY_ID` | Chave de acesso AWS |
+| `AWS_SECRET_ACCESS_KEY` | Chave secreta AWS |
+| `AWS_SESSION_TOKEN` | Token de sessão AWS |
 
-### Variables de Ambiente
+## Execução via GitHub Actions
 
-| Variável | Descrição |
-| --- | --- |
-| `AWS_DEFAULT_REGION` | Região AWS utilizada pelo workflow |
+1. Acesse **Actions** no repositório `mecanica-hermes-infra`
+2. Execute o workflow **`API Gateway - Terraform Create`**
+3. Informe o ambiente (`hml` ou `prd`)
+4. Aguarde a conclusão (~8-10 minutos)
 
-### Deploy
+## Execução local
 
-Dispare a Action manual `API Gateway - Terraform Create` e informe o input `environment` (`hml` ou `prd`).
+Para passos rápidos de deploy local e via GitHub Actions, consulte o [QUICK-START.md](./QUICK-START.md).
 
-### Destroy
+## Destruir recursos
 
-Dispare a Action manual `API Gateway - Terraform Destroy` e informe o input `environment` (`hml` ou `prd`).
+1. Via GitHub Actions: execute o workflow **`API Gateway - Terraform Destroy`** (informe `hml` ou `prd`).
+2. Via CLI: consulte o [QUICK-START.md](./QUICK-START.md#destruir-recursos).
 
----
-
-## Execução Local
-
-### 1. Configurar AWS Credentials
-
-```bash
-aws configure
-```
-
-### 2. Inicializar Terraform
-
-**Para HML:**
-
-```bash
-cd api-gateway
-terraform init -backend-config=backend-hml.hcl
-```
-
-**Para PRD:**
-
-```bash
-cd api-gateway
-terraform init -backend-config=backend-prd.hcl
-```
-
-### 3. Descobrir Valores de Recursos
-
-Execute os seguintes comandos para descobrir os valores necessários:
-
-**VPC ID:**
-
-```bash
-aws ec2 describe-vpcs --filters "Name=tag:Name,Values=mechermes-vpc" --query "Vpcs[0].VpcId" --output text
-```
-
-**Subnets Privadas:**
-
-```bash
-aws ec2 describe-subnets --filters "Name=tag:Name,Values=mechermes-vpc-private-*" --query "Subnets[*].SubnetId" --output text
-```
-
-**Cognito User Pool ARN:**
-
-```bash
-aws cognito-idp list-user-pools --max-results 60 --query "UserPools[?Name=='mechermes-hml-userpool'].Arn | [0]" --output text
-```
-
-**Lambda Function ARN:**
-
-```bash
-aws lambda get-function --function-name mechermes-hml-cognito-token-lambda --query "Configuration.FunctionArn" --output text
-```
-
-**Security Group do Backend:**
-
-```bash
-aws ec2 describe-security-groups --filters "Name=tag:Name,Values=mechermes-eks-node" --query "SecurityGroups[0].GroupId" --output text
-```
-
-### 4. Criar arquivo de variáveis
-
-Copie o exemplo e preencha com os valores descobertos:
-
-```bash
-cp hml.tfvars.example hml.tfvars
-# Edite hml.tfvars com os valores reais
-```
-
-### 5. Planejar e Aplicar
-
-**Planejar:**
-
-```bash
-terraform plan -var-file=hml.tfvars
-```
-
-**Aplicar:**
-
-```bash
-terraform apply -var-file=hml.tfvars
-```
-
-### 6. Obter URL do API Gateway
-
-```bash
-terraform output stage_invoke_url
-```
-
----
-
-## Testando o API Gateway
-
-### 1. Gerar Token de Acesso
-
-```bash
-API_GATEWAY_URL="<sua-url-do-api-gateway>"
-
-# Solicitar geração/envio do token para o e-mail do cliente
-TOKEN_RESPONSE=$(curl -X POST "$API_GATEWAY_URL/auth/generate-token" \
-  -H "Content-Type: application/json" \
-  -d '{"cpf": "51125363061"}')
-
-echo $TOKEN_RESPONSE | jq
-```
-
-> **Nota:** este endpoint não retorna o JWT no corpo; ele envia o token para o e-mail do cliente.
-
-### 2. Acessar API Backend
-
-```bash
-# Exemplo: obter token diretamente no Cognito (client_credentials)
-COGNITO_DOMAIN="mechermes-hml.auth.us-east-1.amazoncognito.com"
-CLIENT_ID="<client_id>"
-CLIENT_SECRET="<client_secret>"
-
-ACCESS_TOKEN=$(curl -s -X POST "https://$COGNITO_DOMAIN/oauth2/token" \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -u "$CLIENT_ID:$CLIENT_SECRET" \
-  -d "grant_type=client_credentials&scope=mechermes/admin" | jq -r '.access_token')
-
-# Fazer requisição autenticada para a API
-curl "$API_GATEWAY_URL/api/ordens-de-servico" \
-  -H "Authorization: Bearer $ACCESS_TOKEN"
-```
-
-### 3. Health Checks
-
-```bash
-# Health check geral
-curl "$API_GATEWAY_URL/health"
-
-# Liveness probe
-curl "$API_GATEWAY_URL/healthz/live"
-
-# Readiness probe
-curl "$API_GATEWAY_URL/healthz/ready"
-```
-
----
-
-## Observabilidade
-
-### CloudWatch Logs
-
-Os logs do API Gateway são armazenados em:
-
-```text
-/aws/apigateway/mechermes-hml
-/aws/apigateway/mechermes-prd
-```
-
-### Métricas Importantes
-
-- **4xx Errors**: Erros de cliente (autenticação inválida, etc.)
-- **5xx Errors**: Erros de servidor (backend indisponível, etc.)
-- **Latency**: Latência de requisições
-- **Count**: Total de requisições
-
----
+> **Atenção:** o API Gateway deve ser o primeiro recurso a ser destruído ao desfazer o ambiente.
 
 ## Troubleshooting
 
 ### Erro: "Unauthorized"
 
-**Causa**: Token JWT inválido ou expirado
+**Causa:** token JWT inválido ou expirado.
 
-**Solução**: Gere um novo token via `POST /auth/generate-token`
+**Solução:** gere um novo token via `POST /auth/generate-token`.
 
 ### Erro: "VPC Link not available"
 
-**Causa**: VPC Link ainda está sendo criado
+**Causa:** VPC Link ainda está sendo criado.
 
-**Solução**: Aguarde alguns minutos. VPC Links podem levar até 10 minutos para ficarem disponíveis.
+**Solução:** aguarde alguns minutos. VPC Links podem levar até 10 minutos.
 
 ### Erro: "Integration timed out"
 
-**Causa**: Backend não está respondendo
+**Causa:** backend não está respondendo.
 
-**Solução**:
-
-1. Verifique se os pods estão rodando: `kubectl get pods -n mecanica-hermes-hml`
-2. Verifique se o NLB está healthy
-3. Verifique os security groups
-
----
-
-## Integração com New Relic
-
-O API Gateway **NÃO afeta** as configurações do New Relic:
-
-- ✅ Os pods continuam enviando telemetria diretamente para o New Relic
-- ✅ O New Relic Infrastructure Agent continua funcionando
-- ✅ Todas as configurações OTEL permanecem inalteradas
-
-O API Gateway atua apenas como um proxy reverso, não interceptando ou modificando a telemetria da aplicação.
-
----
-
-## Migração do Load Balancer
-
-### Antes (LoadBalancer Service)
-
-```text
-Cliente -> ALB (Internet-facing) -> Service (LoadBalancer) -> Pods
-```
-
-### Depois (API Gateway + VPC Link)
-
-```text
-Cliente -> API Gateway -> Cognito (Auth) -> VPC Link -> NLB -> Service (LoadBalancer) -> Pods
-```
-
-**Nota**: O serviço K8s permanece como `LoadBalancer` para que o AWS crie automaticamente o NLB. O API Gateway se conecta ao NLB via VPC Link.
-
----
-
-## Segurança
-
-### Autenticação
-
-- ✅ JWT obrigatório para todas as rotas da API (exceto health checks)
-- ✅ Tokens validados automaticamente pelo Cognito Authorizer
-
-### Rede
-
-- ✅ VPC Link para comunicação privada
-- ✅ Security Groups controlando acesso
-- ✅ Backend em subnets privadas
-
-### Logs e Auditoria
-
-- ✅ Todos os acessos logados no CloudWatch
-- ✅ Rastreamento de requests com `requestId`
-
----
-
-## Custos Estimados
-
-| Recurso | Custo Mensal (estimado) |
-| --- | --- |
-| API Gateway HTTP API | $1.00/milhão de requisições |
-| VPC Link | ~$22/mês por VPC Link |
-| CloudWatch Logs | ~$0.50/GB ingerido |
-| **Total estimado (1M req/mês)** | **~$25-30/mês** |
-
----
-
-## Próximos Passos
-
-1. ✅ Deploy do API Gateway via GitHub Actions
-2. ✅ Configurar DNS customizado (opcional)
-3. ✅ Configurar WAF (opcional, para proteção adicional)
-4. ✅ Configurar custom domain e certificado SSL (opcional)
-5. ✅ Configurar throttling e rate limiting por rota (opcional)
-
----
+**Solução:** verifique se os pods estão rodando (`kubectl get pods -n mecanica-hermes-hml`), se o NLB está healthy e se os security groups estão corretos.
 
 ## Referências
 
@@ -479,3 +139,4 @@ Cliente -> API Gateway -> Cognito (Auth) -> VPC Link -> NLB -> Service (LoadBala
 - [VPC Links for HTTP APIs](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-vpc-links.html)
 - [JWT Authorizers](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-jwt-authorizer.html)
 - [Terraform AWS API Gateway v2](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/apigatewayv2_api)
+- [README principal](../README.md)

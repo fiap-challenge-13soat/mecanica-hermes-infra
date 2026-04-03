@@ -39,4 +39,4 @@ terraform.rc
 infra/.terraform.lock.hcl
 
 # Temp files
-.tmp/
+.temp/
