@@ -1,18 +1,17 @@
 # Mecânica Hermes - Infraestrutura AWS
 
 Este repositório centraliza o provisionamento da infraestrutura AWS da plataforma Mecânica Hermes.
-Os módulos Terraform deste projeto cobrem VPC/EKS, Cognito e API Gateway.
+Os módulos Terraform deste projeto cobrem VPC/EKS, Cognito, Database (RDS) e API Gateway.
 
 ---
 
 ## Tecnologias Utilizadas
 
----
-
 ![Terraform](https://img.shields.io/badge/Terraform-7B42BC?logo=terraform&logoColor=white)
 ![AWS](https://img.shields.io/badge/AWS-Cloud-232F3E?logo=amazonaws&logoColor=white)
 ![Amazon VPC](https://img.shields.io/badge/Amazon%20VPC-232F3E?logo=amazonaws&logoColor=white)
 ![EKS](https://img.shields.io/badge/EKS-Kubernetes-FF9900?logo=amazon-eks&logoColor=white)
+![Amazon RDS](https://img.shields.io/badge/Amazon%20RDS-527FFF?logo=amazonrds&logoColor=white)
 ![Amazon S3](https://img.shields.io/badge/Amazon%20S3-569A31?logo=amazons3&logoColor=white)
 ![Amazon DynamoDB](https://img.shields.io/badge/Amazon%20DynamoDB-4053D6?logo=amazondynamodb&logoColor=white)
 ![Amazon Cognito](https://img.shields.io/badge/Amazon%20Cognito-232F3E?logo=amazoncognito&logoColor=white)
@@ -23,6 +22,7 @@ Os módulos Terraform deste projeto cobrem VPC/EKS, Cognito e API Gateway.
 - **AWS** como provedor de nuvem
 - **VPC, Subnets e Security Groups** para rede e segurança
 - **Amazon EKS** para o cluster Kubernetes
+- **Amazon RDS** para banco de dados PostgreSQL
 - **S3** para armazenamento do estado do Terraform
 - **DynamoDB** para lock de estado do Terraform
 - **Cognito** para provisionar a infraestrutura de autenticação OAuth2 para a aplicação
@@ -35,9 +35,9 @@ Os módulos Terraform deste projeto cobrem VPC/EKS, Cognito e API Gateway.
 
 Nossa infraestrutura para disponibilizar um ambiente completo e funcional é composta por seis passos sequenciais executados em diferentes repositórios/módulos:
 
-1. Mecânica Hermes - Infra Kubernetes (Este projeto - módulo `aws/`)
+1. Mecânica Hermes - Infra Kubernetes (Este projeto - módulo `aws/` ou `learner-lab/`)
 2. Mecânica Hermes - Infra Cognito (Este projeto - módulo `cognito/`)
-3. [Mecânica Hermes - Infra Database](https://github.com/fiap-challenge-13soat/mecanica-hermes-db)
+3. Mecânica Hermes - Infra Database (Este projeto - módulo `db/`)
 4. [Mecânica Hermes - Deploy Kubernetes](https://github.com/fiap-challenge-13soat/mecanica-hermes-k8s)
 5. [Mecânica Hermes - Cognito Token Lambda](https://github.com/fiap-challenge-13soat/mecanica-hermes-lambda)
 6. Mecânica Hermes - API Gateway (Este projeto - módulo `api-gateway/`)
@@ -46,7 +46,7 @@ Nossa infraestrutura para disponibilizar um ambiente completo e funcional é com
 
 ```mermaid
 flowchart
-  subgraph Step1["Repo: Infra Kubernetes (este projeto - aws/)"]
+  subgraph Step1["Módulo aws/ ou learner-lab/ — Infra Kubernetes"]
    TF["Terraform"]
    VPC["VPC: mechermes-vpc"]
    SG["Security Group: mechermes-sg"]
@@ -55,14 +55,14 @@ flowchart
    Nodes["Node Groups"]
   end
 
-  subgraph Step2["Repo: Infra Cognito (este projeto - cognito/)"]
+  subgraph Step2["Módulo cognito/ — Autenticação"]
    TF_Cognito["Terraform"]
    Cognito["AWS Cognito User Pool"]
    CognitoClient["App Client"]
    CognitoSecret["Secrets Manager"]
   end
 
-  subgraph Step3["Repo: Infra Database"]
+  subgraph Step3["Módulo db/ — Database"]
    Data["Data sources: VPC/SG/Subnets"]
    RDS["RDS PostgreSQL (privado)"]
   end
@@ -72,15 +72,15 @@ flowchart
    DDB["DynamoDB: tf locks"]
   end
 
-  subgraph Step4["Repo: Deploy Kubernetes"]
+  subgraph Step4["Externo: Deploy Kubernetes"]
    Apps["Apps publicados no Kubernetes"]
   end
 
-  subgraph Step5["Repo: Cognito Token Lambda"]
+  subgraph Step5["Externo: Cognito Token Lambda"]
    Lambda["Lambda Functions"]
   end
 
-  subgraph Step6["Repo: API Gateway (este projeto - api-gateway/)"]
+  subgraph Step6["Módulo api-gateway/ — Entrada Unificada"]
    TF_APIG["Terraform"]
    APIG["API Gateway HTTP"]
    VPCLink["VPC Link"]
@@ -132,12 +132,14 @@ flowchart
 
 | Fluxo | Workflow |
 | --- | --- |
-| Criar infraestrutura base (learning lab) | `Learning Lab AWS - Terraform Create` |
-| Destruir infraestrutura base (learning lab) | `Learning Lab AWS - Terraform Destroy` |
+| Criar infraestrutura base (learner lab) | `Learner Lab AWS - Terraform Create` |
+| Destruir infraestrutura base (learner lab) | `Learner Lab AWS - Terraform Destroy` |
 | Criar infraestrutura base (AWS admin) | `AWS - Terraform Create` |
 | Destruir infraestrutura base (AWS admin) | `AWS - Terraform Destroy` |
 | Criar/atualizar Cognito | `Cognito - Terraform Create` |
 | Destruir Cognito | `Cognito - Terraform Destroy` |
+| Criar/atualizar Database | `Database - Terraform Create` |
+| Destruir Database | `Database - Terraform Destroy` |
 | Criar/atualizar API Gateway | `API Gateway - Terraform Create` |
 | Destruir API Gateway | `API Gateway - Terraform Destroy` |
 
@@ -148,14 +150,14 @@ flowchart
 | Secret | `AWS_ACCESS_KEY_ID` | Autenticação AWS nos workflows |
 | Secret | `AWS_SECRET_ACCESS_KEY` | Autenticação AWS nos workflows |
 | Secret | `AWS_SESSION_TOKEN` | Sessão temporária (quando aplicável) |
-| Secret | `AWS_ACCOUNT_ID` | Exigido nos workflows de `learning-lab` |
+| Secret | `AWS_ACCOUNT_ID` | Exigido nos workflows de `learner-lab` |
 | Variável | `AWS_DEFAULT_REGION` | Região alvo da AWS |
 
 ### Ordem recomendada de execução
 
-1. `Learning Lab AWS - Terraform Create` **ou** `AWS - Terraform Create`
+1. `Learner Lab AWS - Terraform Create` **ou** `AWS - Terraform Create`
 2. `Cognito - Terraform Create` (input `environment`: `hml` ou `prd`)
-3. Provisionamento do banco no repositório `mecanica-hermes-db`
+3. `Database - Terraform Create` (input `environment`: `hml` ou `prd`)
 4. Deploy da API no repositório `mecanica-hermes-k8s`
 5. Deploy da Lambda no repositório `mecanica-hermes-lambda`
 6. `API Gateway - Terraform Create`
@@ -200,15 +202,35 @@ aws dynamodb create-table --table-name mechermes-tf-locks --attribute-definition
 
 ---
 
-### Deploy do Terraform no AWS Learning Lab
+### Deploy do Terraform no AWS Learner Lab
 
-Confira o [README.md](./learning-lab/README.md) com maiores detalhes para este deploy.
+Confira o [README.md](./learner-lab/README.md) com maiores detalhes para este deploy.
+
+**Recursos provisionados:**
+
+- VPC com sub-redes públicas, privadas e de banco de dados
+- NAT Gateway para acesso à internet das sub-redes privadas
+- EKS Cluster (Kubernetes 1.34) com Node Groups (`t3.small`)
+- Security Groups para comunicação entre EKS, RDS e Lambda
+- Configuração específica para roles `LabRole` e `voclabs` do AWS Academy
+
+**Quick Start:** Veja o [QUICK-START.md](./learner-lab/QUICK-START.md) para deploy rápido em minutos.
 
 ---
 
 ### Deploy do Terraform no AWS com usuário admin
 
 Confira o [README.md](./aws/README.md) com maiores detalhes para este deploy.
+
+**Recursos provisionados:**
+
+- VPC com sub-redes públicas, privadas e de banco de dados
+- NAT Gateway para acesso à internet das sub-redes privadas
+- EKS Cluster (Kubernetes 1.34) com Node Groups (`t3.small`)
+- Security Groups para comunicação entre EKS, RDS e Lambda
+- Roles IAM criadas automaticamente pelo EKS
+
+**Quick Start:** Veja o [QUICK-START.md](./aws/QUICK-START.md) para deploy rápido em minutos.
 
 ---
 
@@ -223,6 +245,24 @@ Confira o [README.md](./cognito/README.md) com maiores detalhes para este deploy
 - Resource Server com scopes customizados (`mechermes/admin`, `mechermes/client`)
 - Cognito Domain para endpoints OAuth2
 - AWS Secrets Manager para armazenamento seguro de credenciais
+
+**Quick Start:** Veja o [QUICK-START.md](./cognito/QUICK-START.md) para deploy rápido em minutos.
+
+---
+
+### Deploy do Database (RDS PostgreSQL)
+
+O módulo `db/` provisiona instâncias Amazon RDS PostgreSQL para os ambientes `hml` e `prd`, reutilizando recursos de rede (VPC, Security Group e DB Subnet Group) criados pelo módulo `aws/`.
+
+**Recursos provisionados:**
+
+- Amazon RDS PostgreSQL 17.6 (`db.t4g.micro`)
+- Criptografia de storage habilitada
+- Backup com retenção de 7 dias
+- Snapshot final ao destruir
+- Acesso restrito à VPC (sem acesso público)
+
+**Quick Start:** Veja o [QUICK-START.md](./db/QUICK-START.md) para deploy rápido em minutos.
 
 ---
 
@@ -247,6 +287,13 @@ Confira o [README.md](./api-gateway/README.md) com maiores detalhes para este de
 - [Arquitetura do repositório](./docs/Arquitetura.md)
 - [RFCs](./docs/RFCs.md)
 - [ADRs](./docs/ADRs.md)
-- [Guia do módulo AWS](./aws/README.md)
-- [Guia do módulo Cognito](./cognito/README.md)
-- [Guia do módulo API Gateway](./api-gateway/README.md)
+
+### Guias por módulo
+
+| Módulo | README | Quick Start |
+| --- | --- | --- |
+| `aws/` | [README.md](./aws/README.md) | [QUICK-START.md](./aws/QUICK-START.md) |
+| `learner-lab/` | [README.md](./learner-lab/README.md) | [QUICK-START.md](./learner-lab/QUICK-START.md) |
+| `cognito/` | [README.md](./cognito/README.md) | [QUICK-START.md](./cognito/QUICK-START.md) |
+| `db/` | [README.md](./db/README.md) | [QUICK-START.md](./db/QUICK-START.md) |
+| `api-gateway/` | [README.md](./api-gateway/README.md) | [QUICK-START.md](./api-gateway/QUICK-START.md) |

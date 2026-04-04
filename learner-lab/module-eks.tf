@@ -87,7 +87,7 @@ module "eks" {
     }
   }
 
-  # Variáveis para funcionamento no Learning Lab
+  # Variáveis para funcionamento no Learner Lab
   aws_iam_session_context_current_arn = data.aws_caller_identity.current.arn
   iam_role_arn                        = local.lab_role_arn
   create_iam_role                     = false
