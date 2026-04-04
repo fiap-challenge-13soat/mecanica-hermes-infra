@@ -44,7 +44,25 @@ Este documento registra decisões arquiteturais permanentes.
 - **Decisão:** exigir criptografia de storage, backup de 7 dias e snapshot final no destroy.
 - **Justificativa:** garante baseline de resiliência e recuperação sem elevar complexidade operacional.
 
-## ADR-008 — Consolidação do módulo de banco no repositório de infraestrutura
+## ADR-009 — Um RDS por ambiente lógico
+
+- **Status:** Aceito
+- **Decisão:** manter identificadores por ambiente (`mechermes-hml-rds` e `mechermes-prd-rds`).
+- **Justificativa:** isolamento operacional entre homologação e produção.
+
+## ADR-010 — Reutilizar rede da infraestrutura base
+
+- **Status:** Aceito
+- **Decisão:** consumir VPC, DB subnet group e security group já criados no repositório `mecanica-hermes-infra`.
+- **Justificativa:** evita duplicação de infraestrutura de rede e centraliza sua governança.
+
+## ADR-011 — Política mínima de proteção de dados
+
+- **Status:** Aceito
+- **Decisão:** exigir criptografia de storage, backup de 7 dias e snapshot final no destroy.
+- **Justificativa:** garante baseline de resiliência e recuperação sem elevar complexidade operacional.
+
+## ADR-012 — Consolidação do módulo de banco no repositório de infraestrutura
 
 - **Status:** Aceito
 - **Decisão:** migrar o módulo Terraform de banco de dados do repositório `mecanica-hermes-db` para este repositório como `db/`.
