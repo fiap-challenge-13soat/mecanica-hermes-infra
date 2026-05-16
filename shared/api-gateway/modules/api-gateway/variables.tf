@@ -48,13 +48,17 @@ variable "api_backend_sg_id" {
   type        = string
 }
 
-variable "nlb_listener_arn" {
-  description = "ARN do listener do NLB criado pelo Kubernetes LoadBalancer Service."
+variable "nlb_cadastros_listener_arn" {
+  description = "ARN do listener do NLB do serviço api-cadastros."
   type        = string
 }
 
-variable "nlb_target_port" {
-  description = "Porta do target do NLB (porta do serviço K8s)."
-  type        = number
-  default     = 80
+variable "nlb_ordem_servico_listener_arn" {
+  description = "ARN do listener do NLB do serviço api-ordem-servico."
+  type        = string
+}
+
+variable "nlb_pagamentos_listener_arn" {
+  description = "ARN do listener do NLB do serviço api-pagamentos."
+  type        = string
 }
