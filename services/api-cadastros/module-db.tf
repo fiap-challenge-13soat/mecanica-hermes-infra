@@ -6,10 +6,10 @@ module "db" {
   engine            = "postgres"
   engine_version    = "17.6"
   family            = "postgres17"
-  instance_class    = "db.t4g.micro"
-  allocated_storage = 10
+  instance_class    = "db.t4g.small"
+  allocated_storage = 20
 
-  db_name  = "${var.project_name}db"
+  db_name  = "cadastrosdb"
   username = "postgres"
   port     = "5432"
 
