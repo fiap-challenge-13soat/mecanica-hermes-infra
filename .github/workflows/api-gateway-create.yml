@@ -33,7 +33,7 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: 1.9.0
+          terraform_version: 1.14.3
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -61,13 +61,6 @@ jobs:
             --query "Subnets[*].SubnetId" \
             --output json)
           echo "✓ Private Subnets: $PRIVATE_SUBNETS_JSON"
-
-          echo "Discovering API Backend Security Group..."
-          API_BACKEND_SG=$(aws ec2 describe-security-groups \
-            --filters "Name=tag:Name,Values=mechermes-eks-node" \
-            --query "SecurityGroups[0].GroupId" \
-            --output text)
-          echo "✓ API Backend SG: $API_BACKEND_SG"
 
           echo "Discovering Cognito User Pool ARN..."
           COGNITO_POOL_ID=$(aws cognito-idp list-user-pools --max-results 60 \
@@ -157,7 +150,6 @@ jobs:
           lambda_function_name           = "mechermes-${ENV}-cognito-token-lambda"
           vpc_id                         = "${VPC_ID}"
           private_subnets                = ${PRIVATE_SUBNETS_JSON}
-          api_backend_sg_id              = "${API_BACKEND_SG}"
           nlb_cadastros_listener_arn     = "${NLB_CADASTROS}"
           nlb_ordem_servico_listener_arn = "${NLB_ORDEM_SERVICO}"
           nlb_pagamentos_listener_arn    = "${NLB_PAGAMENTOS}"

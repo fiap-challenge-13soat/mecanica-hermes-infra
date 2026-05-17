@@ -52,7 +52,7 @@ jobs:
       # Create DynamoDB table for Terraform state locking if it doesn't exist
       - name: Create DynamoDB Table for tf-locks
         run: |
-          if aws dynamodb describe-table --table-name arn:aws:dynamodb:us-east-1:501883958463:table/mechermes-tf-locks 2>/dev/null; then
+          if aws dynamodb describe-table --table-name mechermes-tf-locks 2>/dev/null; then
             echo "DynamoDB table already exists"
           else
             aws dynamodb create-table \

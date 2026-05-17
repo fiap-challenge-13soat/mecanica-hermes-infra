@@ -9,7 +9,6 @@ module "api_gateway" {
   lambda_function_name  = var.lambda_function_name
   vpc_id                = var.vpc_id
   private_subnets       = var.private_subnets
-  api_backend_sg_id              = var.api_backend_sg_id
   nlb_cadastros_listener_arn     = var.nlb_cadastros_listener_arn
   nlb_ordem_servico_listener_arn = var.nlb_ordem_servico_listener_arn
   nlb_pagamentos_listener_arn    = var.nlb_pagamentos_listener_arn

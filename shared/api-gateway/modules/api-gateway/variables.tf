@@ -43,11 +43,6 @@ variable "private_subnets" {
   type        = list(string)
 }
 
-variable "api_backend_sg_id" {
-  description = "Security Group ID do backend da API no EKS."
-  type        = string
-}
-
 variable "nlb_cadastros_listener_arn" {
   description = "ARN do listener do NLB do serviço api-cadastros."
   type        = string
