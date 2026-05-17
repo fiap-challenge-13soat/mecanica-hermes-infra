@@ -24,11 +24,12 @@ jobs:
       fail-fast: false
       matrix:
         module:
-          - aws
-          - learner-lab
-          - cognito
-          - db
-          - api-gateway
+          - shared/aws
+          - shared/cognito
+          - shared/api-gateway
+          - services/api-cadastros
+          - services/api-pagamentos
+          - services/api-ordem-servico
 
     steps:
       - name: Checkout
