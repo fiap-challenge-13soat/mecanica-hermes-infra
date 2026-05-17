@@ -1,4 +1,4 @@
-bucket         = "mechermes-tf-state-aws"
+bucket         = "mechermes-tf-state-aws-microsservices"
 key            = "infra/api-cadastros/db-prd.tfstate"
 region         = "us-east-1"
 encrypt        = true
