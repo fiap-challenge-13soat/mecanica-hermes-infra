@@ -33,7 +33,7 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: 1.9.0
+          terraform_version: 1.14.3
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -59,13 +59,6 @@ jobs:
             --output json)
           echo "✓ Private Subnets: $PRIVATE_SUBNETS_JSON"
 
-          echo "Discovering API Backend Security Group..."
-          API_BACKEND_SG=$(aws ec2 describe-security-groups \
-            --filters "Name=tag:Name,Values=mechermes-eks-node" \
-            --query "SecurityGroups[0].GroupId" \
-            --output text)
-          echo "✓ API Backend SG: $API_BACKEND_SG"
-
           echo "Discovering Cognito User Pool ARN..."
           COGNITO_POOL_ID=$(aws cognito-idp list-user-pools --max-results 60 \
             --query "UserPools[?Name=='mechermes-${{ inputs.environment }}-userpool'].Id | [0]" \
@@ -90,59 +83,21 @@ jobs:
             --output text)
           echo "✓ Lambda ARN: $LAMBDA_ARN"
 
-          echo "Discovering NLB Listener ARN..."
-          # First, list all NLBs in the VPC for debugging
-          echo "Available NLBs in VPC:"
-          aws elbv2 describe-load-balancers \
-            --query "LoadBalancers[?VpcId=='${VPC_ID}' && Type=='network'].[LoadBalancerName,Scheme,LoadBalancerArn]" \
-            --output table
-          
-          # Try to find internal NLB first, then fall back to any network LB
-          NLB_ARN=$(aws elbv2 describe-load-balancers \
-            --query "LoadBalancers[?VpcId=='${VPC_ID}' && Type=='network' && Scheme=='internal'] | [0].LoadBalancerArn" \
-            --output text)
-          
-          if [ "$NLB_ARN" == "None" ] || [ -z "$NLB_ARN" ]; then
-            echo "⚠ No internal NLB found, trying any network load balancer..."
-            NLB_ARN=$(aws elbv2 describe-load-balancers \
-              --query "LoadBalancers[?VpcId=='${VPC_ID}' && Type=='network'] | [0].LoadBalancerArn" \
-              --output text)
-          fi
-          
-          if [ "$NLB_ARN" == "None" ] || [ -z "$NLB_ARN" ]; then
-            echo "❌ ERROR: No Network Load Balancer found in VPC ${VPC_ID}"
-            exit 1
-          fi
-          
-          echo "✓ NLB ARN: $NLB_ARN"
-          
-          NLB_LISTENER_ARN=$(aws elbv2 describe-listeners \
-            --load-balancer-arn "$NLB_ARN" \
-            --query "Listeners[?Port==\`80\`] | [0].ListenerArn" \
-            --output text)
-          
-          if [ "$NLB_LISTENER_ARN" == "None" ] || [ -z "$NLB_LISTENER_ARN" ]; then
-            echo "❌ ERROR: No listener on port 80 found for NLB"
-            echo "Available listeners:"
-            aws elbv2 describe-listeners --load-balancer-arn "$NLB_ARN" --query "Listeners[*].[Port,Protocol]" --output table
-            exit 1
-          fi
-          
-          echo "✓ NLB Listener ARN: $NLB_LISTENER_ARN"
-
+          # NLB ARN values are not used during destroy (Terraform reads state),
+          # but the variables must be present to satisfy the module signature.
           echo "Generating terraform.tfvars..."
           cat > terraform.tfvars <<EOF
-          project_name          = "mechermes"
-          environment           = "${{ inputs.environment }}"
-          cognito_user_pool_arn = "${COGNITO_ARN}"
-          cognito_app_client_id = "${COGNITO_CLIENT_ID}"
-          lambda_function_arn   = "${LAMBDA_ARN}"
-          lambda_function_name  = "mechermes-${{ inputs.environment }}-cognito-token-lambda"
-          vpc_id                = "${VPC_ID}"
-          private_subnets       = ${PRIVATE_SUBNETS_JSON}
-          api_backend_sg_id     = "${API_BACKEND_SG}"
-          nlb_listener_arn      = "${NLB_LISTENER_ARN}"
-          nlb_target_port       = 80
+          project_name                   = "mechermes"
+          environment                    = "${{ inputs.environment }}"
+          cognito_user_pool_arn          = "${COGNITO_ARN}"
+          cognito_app_client_id          = "${COGNITO_CLIENT_ID}"
+          lambda_function_arn            = "${LAMBDA_ARN}"
+          lambda_function_name           = "mechermes-${{ inputs.environment }}-cognito-token-lambda"
+          vpc_id                         = "${VPC_ID}"
+          private_subnets                = ${PRIVATE_SUBNETS_JSON}
+          nlb_cadastros_listener_arn     = "arn:aws:elasticloadbalancing:us-east-1:000000000000:listener/net/placeholder/0/0"
+          nlb_ordem_servico_listener_arn = "arn:aws:elasticloadbalancing:us-east-1:000000000000:listener/net/placeholder/0/0"
+          nlb_pagamentos_listener_arn    = "arn:aws:elasticloadbalancing:us-east-1:000000000000:listener/net/placeholder/0/0"
           EOF
           echo "✓ terraform.tfvars generated"
           cat terraform.tfvars

@@ -16,10 +16,44 @@ resource "aws_lambda_permission" "api_gateway" {
   source_arn = "${aws_apigatewayv2_api.main.execution_arn}/*/*/auth/generate-token"
 }
 
-resource "aws_apigatewayv2_integration" "api_backend" {
+resource "aws_apigatewayv2_integration" "cadastros" {
   api_id           = aws_apigatewayv2_api.main.id
   integration_type = "HTTP_PROXY"
-  integration_uri  = var.nlb_listener_arn
+  integration_uri  = var.nlb_cadastros_listener_arn
+
+  integration_method = "ANY"
+  connection_type    = "VPC_LINK"
+  connection_id      = aws_apigatewayv2_vpc_link.main.id
+
+  payload_format_version = "1.0"
+  timeout_milliseconds   = 30000
+
+  request_parameters = {
+    "overwrite:path" = "$request.path"
+  }
+}
+
+resource "aws_apigatewayv2_integration" "ordem_servico" {
+  api_id           = aws_apigatewayv2_api.main.id
+  integration_type = "HTTP_PROXY"
+  integration_uri  = var.nlb_ordem_servico_listener_arn
+
+  integration_method = "ANY"
+  connection_type    = "VPC_LINK"
+  connection_id      = aws_apigatewayv2_vpc_link.main.id
+
+  payload_format_version = "1.0"
+  timeout_milliseconds   = 30000
+
+  request_parameters = {
+    "overwrite:path" = "$request.path"
+  }
+}
+
+resource "aws_apigatewayv2_integration" "pagamentos" {
+  api_id           = aws_apigatewayv2_api.main.id
+  integration_type = "HTTP_PROXY"
+  integration_uri  = var.nlb_pagamentos_listener_arn
 
   integration_method = "ANY"
   connection_type    = "VPC_LINK"

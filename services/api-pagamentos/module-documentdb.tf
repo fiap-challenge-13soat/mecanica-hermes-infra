@@ -4,11 +4,11 @@ resource "aws_security_group" "docdb" {
   vpc_id      = data.aws_vpc.main.id
 
   ingress {
-    from_port   = 27017
-    to_port     = 27017
-    protocol    = "tcp"
-    cidr_blocks = [data.aws_vpc.main.cidr_block]
-    description = "DocumentDB from VPC"
+    from_port       = 27017
+    to_port         = 27017
+    protocol        = "tcp"
+    security_groups = [data.aws_security_group.eks_nodes.id]
+    description     = "DocumentDB from EKS nodes"
   }
 
   egress {
