@@ -2,7 +2,7 @@ data "aws_db_instance" "rds" {
   db_instance_identifier = "${var.project_name}-${var.environment}-rds"
 }
 
-data "aws_docdb_cluster" "shared" {
+data "aws_rds_cluster" "shared" {
   cluster_identifier = "${var.project_name}-${var.environment}-docdb"
 }
 
