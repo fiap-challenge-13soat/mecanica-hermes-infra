@@ -1,8 +1,6 @@
 resource "random_password" "mq_admin" {
   length  = 24
-  special = true
-  # Amazon MQ disallows: , = \n ' " \t \r
-  override_special = "!#$%&*()-_+[]{}|<>:?"
+  special = false
 }
 
 resource "aws_security_group" "mq_sg" {
@@ -32,12 +30,13 @@ resource "aws_security_group" "mq_sg" {
 }
 
 resource "aws_mq_broker" "main" {
-  broker_name         = "${var.project_name}-mq"
-  engine_type         = "RabbitMQ"
-  engine_version      = "3.13"
-  host_instance_type  = "mq.t3.micro"
-  deployment_mode     = "SINGLE_INSTANCE"
-  publicly_accessible = false
+  broker_name                = "${var.project_name}-mq"
+  engine_type                = "RabbitMQ"
+  engine_version             = "3.13"
+  host_instance_type         = "mq.m7g.medium"
+  deployment_mode            = "SINGLE_INSTANCE"
+  publicly_accessible        = false
+  auto_minor_version_upgrade = true
 
   subnet_ids      = [module.vpc.private_subnets[0]]
   security_groups = [aws_security_group.mq_sg.id]
