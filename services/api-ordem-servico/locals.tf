@@ -1,8 +1,8 @@
 locals {
   docdb_shared = {
     cluster_identifier = "${var.project_name}-${var.environment}-docdb"
-    endpoint           = data.aws_docdb_cluster.shared.endpoint
-    reader_endpoint    = data.aws_docdb_cluster.shared.reader_endpoint
+    endpoint           = data.aws_rds_cluster.shared.endpoint
+    reader_endpoint    = data.aws_rds_cluster.shared.reader_endpoint
     secret_arn         = data.aws_secretsmanager_secret.docdb.arn
   }
 
