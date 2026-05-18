@@ -157,6 +157,11 @@ jobs:
           echo "✓ terraform.tfvars generated"
           cat terraform.tfvars
 
+          # Removing previous lambda-permission to create again
+          aws lambda remove-permission \
+            --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
+            --statement-id AllowExecutionFromAPIGateway-hml || true
+
       - name: Terraform Init
         run: terraform init -backend-config=backend-${{ inputs.environment }}.hcl
 
