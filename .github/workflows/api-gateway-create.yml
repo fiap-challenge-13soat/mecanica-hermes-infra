@@ -142,28 +142,27 @@ jobs:
 
           echo "Generating terraform.tfvars..."
           cat > terraform.tfvars <<EOF
-          project_name                   = "mechermes"
-          environment                    = "${ENV}"
-          cognito_user_pool_arn          = "${COGNITO_ARN}"
-          cognito_app_client_id          = "${COGNITO_CLIENT_ID}"
-          lambda_function_arn            = "${LAMBDA_ARN}"
-          lambda_function_name           = "mechermes-${ENV}-cognito-token-lambda"
-          vpc_id                         = "${VPC_ID}"
-          private_subnets                = ${PRIVATE_SUBNETS_JSON}
+          project_name          = "mechermes"
+          environment           = "${ENV}"
+          cognito_user_pool_arn = "${COGNITO_ARN}"
+          cognito_app_client_id = "${COGNITO_CLIENT_ID}"
+          lambda_function_arn   = "${LAMBDA_ARN}"
+          lambda_function_name  = "mechermes-${ENV}-cognito-token-lambda"
+          vpc_id                = "${VPC_ID}"
+          private_subnets = ${PRIVATE_SUBNETS_JSON}
           nlb_cadastros_listener_arn     = "${NLB_CADASTROS}"
           nlb_ordem_servico_listener_arn = "${NLB_ORDEM_SERVICO}"
           nlb_pagamentos_listener_arn    = "${NLB_PAGAMENTOS}"
           EOF
           echo "✓ terraform.tfvars generated"
           cat terraform.tfvars
-          terraform fmt -recursive
 
           # Removing previous lambda-permission to create again
-          aws lambda get-policy \
+          LAMBDA_POLICY=$(aws lambda get-policy \
             --function-name mechermes-${ENV}-cognito-token-lambda \
             --query "Policy" --output text 2>/dev/null | grep -q "AllowExecutionFromAPIGateway-hml"
 
-          if [ $? -eq 0 ]; then
+          if [ ! -z "$LAMBDA_POLICY" ]; then
             aws lambda remove-permission \
               --function-name mechermes-${ENV}-cognito-token-lambda \
               --statement-id AllowExecutionFromAPIGateway-hml || true
