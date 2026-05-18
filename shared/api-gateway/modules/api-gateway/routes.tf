@@ -18,7 +18,7 @@ resource "aws_apigatewayv2_route" "lambda_post" {
 
 resource "aws_apigatewayv2_route" "scalar_cadastros" {
   api_id    = aws_apigatewayv2_api.main.id
-  route_key = "GET /scalar/{proxy+}"
+  route_key = "GET /cadastros/scalar/{proxy+}"
   target    = "integrations/${aws_apigatewayv2_integration.cadastros.id}"
 
   authorization_type = "NONE"
@@ -26,7 +26,7 @@ resource "aws_apigatewayv2_route" "scalar_cadastros" {
 
 resource "aws_apigatewayv2_route" "openapi_cadastros" {
   api_id    = aws_apigatewayv2_api.main.id
-  route_key = "GET /openapi/{proxy+}"
+  route_key = "GET /cadastros/openapi/{proxy+}"
   target    = "integrations/${aws_apigatewayv2_integration.cadastros.id}"
 
   authorization_type = "NONE"
@@ -34,16 +34,32 @@ resource "aws_apigatewayv2_route" "openapi_cadastros" {
 
 resource "aws_apigatewayv2_route" "scalar_ordem_servico" {
   api_id    = aws_apigatewayv2_api.main.id
-  route_key = "GET /scalar/ordem-servico"
-  target    = "integrations/${aws_apigatewayv2_integration.ordem_servico_scalar.id}"
+  route_key = "GET /ordem-servico/scalar/{proxy+}"
+  target    = "integrations/${aws_apigatewayv2_integration.ordem_servico.id}"
+
+  authorization_type = "NONE"
+}
+
+resource "aws_apigatewayv2_route" "openapi_ordem_servico" {
+  api_id    = aws_apigatewayv2_api.main.id
+  route_key = "GET /ordem-servico/openapi/{proxy+}"
+  target    = "integrations/${aws_apigatewayv2_integration.ordem_servico.id}"
 
   authorization_type = "NONE"
 }
 
 resource "aws_apigatewayv2_route" "scalar_pagamentos" {
   api_id    = aws_apigatewayv2_api.main.id
-  route_key = "GET /scalar/pagamentos"
-  target    = "integrations/${aws_apigatewayv2_integration.pagamentos_scalar.id}"
+  route_key = "GET /pagamentos/scalar/{proxy+}"
+  target    = "integrations/${aws_apigatewayv2_integration.pagamentos.id}"
+
+  authorization_type = "NONE"
+}
+
+resource "aws_apigatewayv2_route" "openapi_pagamentos" {
+  api_id    = aws_apigatewayv2_api.main.id
+  route_key = "GET /pagamentos/openapi/{proxy+}"
+  target    = "integrations/${aws_apigatewayv2_integration.pagamentos.id}"
 
   authorization_type = "NONE"
 }
