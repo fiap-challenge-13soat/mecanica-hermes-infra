@@ -111,7 +111,7 @@ jobs:
                   --query "Listeners[?Port==\`80\`] | [0].ListenerArn" \
                   --output text)
               #   echo "✓ ${description} listener: $LISTENER"
-              #  echo "$LISTENER"
+                echo "$LISTENER"
                 return 0
               fi
             done
