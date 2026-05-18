@@ -8,6 +8,46 @@ resource "aws_apigatewayv2_route" "lambda_post" {
   authorization_type = "NONE"
 }
 
+# ── Scalar API docs (public) ──────────────────────────────────────────────────
+# /scalar/{proxy+} and /openapi/{proxy+} route to cadastros (fully working: spec URL matches).
+# /scalar/ordem-servico and /scalar/pagamentos are more specific and take precedence,
+# rewiring to their respective services via dedicated integrations (path rewritten to /scalar/v1).
+# Limitation: Scalar's HTML embeds spec-url="/openapi/v1.json" for all three UIs, which routes
+# to cadastros' spec. To fix, configure each service's MapOpenApi/MapScalarApiReference with a
+# service-specific path and add matching /openapi/<service>/{proxy+} routes here.
+
+resource "aws_apigatewayv2_route" "scalar_cadastros" {
+  api_id    = aws_apigatewayv2_api.main.id
+  route_key = "GET /scalar/{proxy+}"
+  target    = "integrations/${aws_apigatewayv2_integration.cadastros.id}"
+
+  authorization_type = "NONE"
+}
+
+resource "aws_apigatewayv2_route" "openapi_cadastros" {
+  api_id    = aws_apigatewayv2_api.main.id
+  route_key = "GET /openapi/{proxy+}"
+  target    = "integrations/${aws_apigatewayv2_integration.cadastros.id}"
+
+  authorization_type = "NONE"
+}
+
+resource "aws_apigatewayv2_route" "scalar_ordem_servico" {
+  api_id    = aws_apigatewayv2_api.main.id
+  route_key = "GET /scalar/ordem-servico"
+  target    = "integrations/${aws_apigatewayv2_integration.ordem_servico_scalar.id}"
+
+  authorization_type = "NONE"
+}
+
+resource "aws_apigatewayv2_route" "scalar_pagamentos" {
+  api_id    = aws_apigatewayv2_api.main.id
+  route_key = "GET /scalar/pagamentos"
+  target    = "integrations/${aws_apigatewayv2_integration.pagamentos_scalar.id}"
+
+  authorization_type = "NONE"
+}
+
 # ── api-cadastros ─────────────────────────────────────────────────────────────
 
 resource "aws_apigatewayv2_route" "clientes" {
