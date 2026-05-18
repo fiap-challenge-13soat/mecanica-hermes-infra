@@ -157,19 +157,9 @@ jobs:
           echo "✓ terraform.tfvars generated"
           cat terraform.tfvars
 
-          # Removing previous lambda-permission to create again
-          LAMBDA_POLICY=$(aws lambda get-policy \
+          aws lambda remove-permission \
             --function-name mechermes-${ENV}-cognito-token-lambda \
-            --query "Policy" --output text 2>/dev/null | grep -q "AllowExecutionFromAPIGateway-hml"
-
-          if [ ! -z "$LAMBDA_POLICY" ]; then
-            aws lambda remove-permission \
-              --function-name mechermes-${ENV}-cognito-token-lambda \
-              --statement-id AllowExecutionFromAPIGateway-hml || true
-            echo "✓ Removed existing Lambda permission for API Gateway"
-          else
-            echo "✓ No existing Lambda permission for API Gateway found"
-          fi
+            --statement-id AllowExecutionFromAPIGateway-hml || true
 
       - name: Terraform Init
         run: terraform init -backend-config=backend-${{ inputs.environment }}.hcl
