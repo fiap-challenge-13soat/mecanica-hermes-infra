@@ -154,6 +154,38 @@ resource "aws_apigatewayv2_route" "webhooks_orcamentos_proxy" {
   authorization_type = "NONE"
 }
 
+resource "aws_apigatewayv2_route" "cadastros_options" {
+  api_id    = aws_apigatewayv2_api.main.id
+  route_key = "OPTIONS /api/clientes/{proxy+}"
+  target    = "integrations/${aws_apigatewayv2_integration.cadastros.id}"
+
+  authorization_type = "NONE" #
+}
+
+resource "aws_apigatewayv2_route" "produtos_options" {
+  api_id    = aws_apigatewayv2_api.main.id
+  route_key = "OPTIONS /api/produtos/{proxy+}"
+  target    = "integrations/${aws_apigatewayv2_integration.cadastros.id}"
+
+  authorization_type = "NONE"
+}
+
+resource "aws_apigatewayv2_route" "notificacoes_options" {
+  api_id    = aws_apigatewayv2_api.main.id
+  route_key = "OPTIONS /api/notificacoes/{proxy+}"
+  target    = "integrations/${aws_apigatewayv2_integration.cadastros.id}"
+
+  authorization_type = "NONE"
+}
+
+resource "aws_apigatewayv2_route" "servicos_options" {
+  api_id    = aws_apigatewayv2_api.main.id
+  route_key = "OPTIONS /api/servicos/{proxy+}"
+  target    = "integrations/${aws_apigatewayv2_integration.cadastros.id}"
+
+  authorization_type = "NONE"
+}
+
 # ── api-ordem-servico ─────────────────────────────────────────────────────────
 
 resource "aws_apigatewayv2_route" "ordens_de_servico" {
@@ -172,6 +204,14 @@ resource "aws_apigatewayv2_route" "ordens_de_servico_proxy" {
 
   authorization_type = "JWT"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "ordens_de_servico_options" {
+  api_id    = aws_apigatewayv2_api.main.id
+  route_key = "OPTIONS /api/ordens-de-servico/{proxy+}"
+  target    = "integrations/${aws_apigatewayv2_integration.ordem_servico.id}"
+
+  authorization_type = "NONE"
 }
 
 # ── api-pagamentos ────────────────────────────────────────────────────────────
@@ -205,6 +245,14 @@ resource "aws_apigatewayv2_route" "webhooks_mercadopago" {
 resource "aws_apigatewayv2_route" "webhooks_mercadopago_proxy" {
   api_id    = aws_apigatewayv2_api.main.id
   route_key = "ANY /api/webhooks/mercadopago/{proxy+}"
+  target    = "integrations/${aws_apigatewayv2_integration.pagamentos.id}"
+
+  authorization_type = "NONE"
+}
+
+resource "aws_apigatewayv2_route" "pagamentos_options" {
+  api_id    = aws_apigatewayv2_api.main.id
+  route_key = "OPTIONS /api/pagamentos/{proxy+}"
   target    = "integrations/${aws_apigatewayv2_integration.pagamentos.id}"
 
   authorization_type = "NONE"
