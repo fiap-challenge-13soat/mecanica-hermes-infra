@@ -156,6 +156,7 @@ jobs:
           EOF
           echo "✓ terraform.tfvars generated"
           cat terraform.tfvars
+          terraform fmt -recursive
 
           aws lambda remove-permission \
             --function-name mechermes-${ENV}-cognito-token-lambda \
