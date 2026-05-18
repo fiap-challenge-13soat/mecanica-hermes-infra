@@ -99,7 +99,7 @@ jobs:
           find_nlb_listener() {
             local target_tag="$1"
             local description="$2"
-            echo "Looking for NLB with kubernetes.io/service-name=${target_tag}..."
+            # echo "Looking for NLB with kubernetes.io/service-name=${target_tag}..."
             for ARN in $NLB_ARNS; do
               TAG=$(aws elbv2 describe-tags \
                 --resource-arns "$ARN" \
@@ -110,12 +110,12 @@ jobs:
                   --load-balancer-arn "$ARN" \
                   --query "Listeners[?Port==\`80\`] | [0].ListenerArn" \
                   --output text)
-                echo "✓ ${description} listener: $LISTENER"
-                echo "$LISTENER"
+              #   echo "✓ ${description} listener: $LISTENER"
+              #  echo "$LISTENER"
                 return 0
               fi
             done
-            echo "❌ ERROR: NLB not found for ${target_tag}" >&2
+            # echo "❌ ERROR: NLB not found for ${target_tag}" >&2
             return 1
           }
 
