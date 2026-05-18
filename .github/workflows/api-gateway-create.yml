@@ -159,7 +159,7 @@ jobs:
 
           # Removing previous lambda-permission to create again
           aws lambda remove-permission \
-            --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
+            --function-name mechermes-${ENV}-cognito-token-lambda \
             --statement-id AllowExecutionFromAPIGateway-hml || true
 
       - name: Terraform Init
