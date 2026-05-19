@@ -23,7 +23,7 @@ jobs:
 
     defaults:
       run:
-        working-directory: ./cognito
+        working-directory: ./shared/cognito
         shell: bash
 
     steps:
@@ -45,10 +45,10 @@ jobs:
 
       - name: Create S3 Bucket for Terraform State
         run: |
-          if aws s3api head-bucket --bucket mechermes-tf-state-aws 2>/dev/null; then
+          if aws s3api head-bucket --bucket mechermes-tf-state-aws-microsservices 2>/dev/null; then
             echo "✓ S3 bucket already exists"
           else
-            aws s3api create-bucket --bucket mechermes-tf-state-aws --region ${{ vars.AWS_DEFAULT_REGION }}
+            aws s3api create-bucket --bucket mechermes-tf-state-aws-microsservices --region ${{ vars.AWS_DEFAULT_REGION }}
             echo "✓ S3 bucket created, waiting 60 seconds..."
             sleep 60
           fi

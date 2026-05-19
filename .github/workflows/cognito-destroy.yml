@@ -23,7 +23,7 @@ jobs:
 
     defaults:
       run:
-        working-directory: ./cognito
+        working-directory: ./shared/cognito
         shell: bash
 
     steps:

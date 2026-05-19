@@ -23,7 +23,7 @@ jobs:
 
     defaults:
       run:
-        working-directory: ./api-gateway
+        working-directory: ./shared/api-gateway
         shell: bash
 
     steps:

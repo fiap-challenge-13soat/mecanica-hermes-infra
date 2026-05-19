@@ -15,7 +15,7 @@ jobs:
     # Use the Bash shell regardless whether the GitHub Actions runner is ubuntu-latest, macos-latest, or windows-latest
     defaults:
       run:
-        working-directory: ./aws
+        working-directory: ./shared/aws
         shell: bash
 
     steps:
@@ -41,10 +41,10 @@ jobs:
       # S3 bucket for Terraform state files if it doesn't exist
       - name: Create Bucket tfstate
         run: |
-          if aws s3api head-bucket --bucket mechermes-tf-state-aws 2>/dev/null; then
+          if aws s3api head-bucket --bucket mechermes-tf-state-aws-microsservices 2>/dev/null; then
             echo "Bucket already exists"
           else
-            aws s3api create-bucket --bucket mechermes-tf-state-aws --region ${{ vars.AWS_DEFAULT_REGION }}
+            aws s3api create-bucket --bucket mechermes-tf-state-aws-microsservices --region ${{ vars.AWS_DEFAULT_REGION }}
             echo "Bucket created, waiting 60 seconds before continuing..."
             sleep 60
           fi

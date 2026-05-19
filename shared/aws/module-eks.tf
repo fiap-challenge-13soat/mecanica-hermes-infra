@@ -57,7 +57,7 @@ module "eks" {
       self        = true
     }
     ingress_nodeport_from_vpc = {
-      description = "Allow NLB NodePort forwarding from within VPC (required for API Gateway → NLB → EKS routing)"
+      description = "Allow NLB NodePort forwarding from within VPC (required for API Gateway to NLB to EKS routing)"
       protocol    = "tcp"
       from_port   = 30000
       to_port     = 32767
