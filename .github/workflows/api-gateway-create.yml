@@ -43,6 +43,12 @@ jobs:
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: ${{ vars.AWS_DEFAULT_REGION }}
 
+      - name: Install Kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Configure Kubeconfig
+        run: aws eks update-kubeconfig --name mechermes-eks
+
       - name: Discover Infrastructure Values
         id: discover
         run: |
@@ -86,49 +92,68 @@ jobs:
             --output text)
           echo "✓ Lambda ARN: $LAMBDA_ARN"
 
-          # ── NLB discovery by Kubernetes service tag ────────────────────────
-          # The in-tree K8s cloud controller tags each NLB with:
-          #   kubernetes.io/service-name: <namespace>/<service-name>
-          # We use this to unambiguously identify each service's NLB.
+          # ── NLB discovery via K8s service hostname ────────────────────────
+          # Resolves the NLB listener ARN for a service by reading the hostname
+          # from the Service's .status.loadBalancer.ingress — this works
+          # regardless of which cloud controller (in-tree or AWS LBC) provisioned
+          # the NLB, and regardless of tag format conventions.
+          # All debug output goes to stderr so only the ARN reaches the caller.
 
-          echo "Collecting all internal NLBs in VPC..."
-          NLB_ARNS=$(aws elbv2 describe-load-balancers \
-            --query "LoadBalancers[?VpcId=='${VPC_ID}' && Type=='network'].LoadBalancerArn" \
-            --output text | tr '\t' '\n')
+          get_nlb_listener() {
+            local namespace="$1"
+            local service="$2"
+            local desc="$3"
 
-          find_nlb_listener() {
-            local target_tag="$1"
-            local description="$2"
-            # echo "Looking for NLB with kubernetes.io/service-name=${target_tag}..."
-            for ARN in $NLB_ARNS; do
-              TAG=$(aws elbv2 describe-tags \
-                --resource-arns "$ARN" \
-                --query "TagDescriptions[0].Tags[?Key=='kubernetes.io/service-name'].Value | [0]" \
-                --output text)
-              if [ "$TAG" = "$target_tag" ]; then
-                LISTENER=$(aws elbv2 describe-listeners \
-                  --load-balancer-arn "$ARN" \
-                  --query "Listeners[?Port==\`80\`] | [0].ListenerArn" \
-                  --output text)
-              #   echo "✓ ${description} listener: $LISTENER"
-                echo "$LISTENER"
-                return 0
-              fi
-            done
-            # echo "❌ ERROR: NLB not found for ${target_tag}" >&2
-            return 1
+            echo "Getting NLB hostname for ${namespace}/${service}..." >&2
+            local hostname
+            hostname=$(kubectl get service "$service" -n "$namespace" \
+              -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null)
+
+            if [ -z "$hostname" ] || [ "$hostname" = "null" ]; then
+              echo "❌ ERROR: Service ${namespace}/${service} has no NLB hostname — is it deployed?" >&2
+              return 1
+            fi
+            echo "✓ Hostname: $hostname" >&2
+
+            local nlb_arn
+            nlb_arn=$(aws elbv2 describe-load-balancers \
+              --query "LoadBalancers[?DNSName=='${hostname}'].LoadBalancerArn | [0]" \
+              --output text)
+
+            if [ -z "$nlb_arn" ] || [ "$nlb_arn" = "None" ]; then
+              echo "❌ ERROR: No NLB found for hostname $hostname" >&2
+              return 1
+            fi
+            echo "✓ NLB ARN: $nlb_arn" >&2
+
+            local listener
+            listener=$(aws elbv2 describe-listeners \
+              --load-balancer-arn "$nlb_arn" \
+              --query "Listeners[?Port==\`80\`] | [0].ListenerArn" \
+              --output text)
+
+            if [ -z "$listener" ] || [ "$listener" = "None" ]; then
+              echo "❌ ERROR: No port-80 listener on NLB $nlb_arn" >&2
+              return 1
+            fi
+            echo "✓ ${desc} listener: $listener" >&2
+
+            echo "$listener"
           }
 
-          NLB_CADASTROS=$(find_nlb_listener \
-            "mecanica-hermes-cadastros-${ENV}/mecanica-hermes-api-cadastros" \
+          NLB_CADASTROS=$(get_nlb_listener \
+            "mecanica-hermes-cadastros-${ENV}" \
+            "mecanica-hermes-api-cadastros" \
             "api-cadastros")
 
-          NLB_ORDEM_SERVICO=$(find_nlb_listener \
-            "mecanica-hermes-ordem-servico-${ENV}/mecanica-hermes-api-ordem-servico" \
+          NLB_ORDEM_SERVICO=$(get_nlb_listener \
+            "mecanica-hermes-ordem-servico-${ENV}" \
+            "mecanica-hermes-api-ordem-servico" \
             "api-ordem-servico")
 
-          NLB_PAGAMENTOS=$(find_nlb_listener \
-            "mecanica-hermes-pagamentos-${ENV}/mecanica-hermes-api-pagamentos" \
+          NLB_PAGAMENTOS=$(get_nlb_listener \
+            "mecanica-hermes-pagamentos-${ENV}" \
+            "mecanica-hermes-api-pagamentos" \
             "api-pagamentos")
 
           # Fail fast if any listener was not found
@@ -160,7 +185,7 @@ jobs:
 
           aws lambda remove-permission \
             --function-name mechermes-${ENV}-cognito-token-lambda \
-            --statement-id AllowExecutionFromAPIGateway-hml || true
+            --statement-id AllowExecutionFromAPIGateway-${ENV} || true
 
       - name: Terraform Init
         run: terraform init -backend-config=backend-${{ inputs.environment }}.hcl
