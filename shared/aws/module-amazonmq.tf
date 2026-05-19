@@ -16,6 +16,14 @@ resource "aws_security_group" "mq_sg" {
     security_groups = [module.eks.node_security_group_id]
   }
 
+  ingress {
+    description = "RabbitMQ web console (HTTPS) from internet"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -35,10 +43,10 @@ resource "aws_mq_broker" "main" {
   engine_version             = "3.13"
   host_instance_type         = "mq.m7g.medium"
   deployment_mode            = "SINGLE_INSTANCE"
-  publicly_accessible        = false
+  publicly_accessible        = true
   auto_minor_version_upgrade = true
 
-  subnet_ids      = [module.vpc.private_subnets[0]]
+  subnet_ids      = [module.vpc.public_subnets[0]]
   security_groups = [aws_security_group.mq_sg.id]
 
   user {
